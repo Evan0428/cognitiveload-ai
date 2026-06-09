@@ -1,0 +1,36 @@
+name: cognitiveload_ai
+description: "CognitiveLoad AI - Cognitive Load & Mental Stress Management System. Combines OCR schedule digitization (Lim Kah Jun) and physiological readiness monitoring (Chua Yi Zhe)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # ---- Schedule Digitization Module (Lim Kah Jun) ----
+  google_mlkit_text_recognition: ^0.13.0   # OCR engine (real device)
+  image_picker: ^1.1.2                      # Capture / pick timetable image
+  image: ^4.2.0                             # Image preprocessing (contrast/denoise)
+
+  # ---- Physiological Monitoring Module (Chua Yi Zhe) ----
+  health: ^11.0.0                           # Apple HealthKit / Google Health Connect
+  # tflite_flutter: ^0.11.0                  # On-device readiness model (enable on device)
+
+  # ---- Shared ----
+  provider: ^6.1.2                          # State management
+  shared_preferences: ^2.3.2                # Local persistence (on-device, offline)
+  flutter_local_notifications: ^17.2.3      # Workload / readiness alerts
+  intl: ^0.19.0                             # Date/time formatting
+  fl_chart: ^0.69.0                         # Workload + readiness visualisation
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
