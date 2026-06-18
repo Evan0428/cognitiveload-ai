@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723356367770",
+    "project_id": "cognitive-load-ai",
+    "storage_bucket": "cognitive-load-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723356367770:android:04d4b72d34be360aa51823",
+        "android_client_info": {
+          "package_name": "com.example.cognitiveload_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdznnUVA9TwPPaXbp5C-c3I1suVKWavow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

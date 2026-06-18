@@ -27,6 +27,11 @@ dependencies:
   intl: ^0.19.0                             # Date/time formatting
   fl_chart: ^0.69.0                         # Workload + readiness visualisation
 
+  # ==== Firebase 核心组件 ====
+  firebase_core: ^3.1.0                     # Firebase 核心基础
+  firebase_auth: ^5.1.0                     # Module 1: 注册登录、重置密码
+  cloud_firestore: ^5.1.0                   # Module 1: 存储 Profile 类别和阈值
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -34,3 +39,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/CognitiveLoadAI-logo.png
