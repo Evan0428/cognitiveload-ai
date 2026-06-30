@@ -29,8 +29,8 @@ class TaskManagerView extends StatelessWidget {
               child: Container(
                 width: 80,
                 height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAEAFF),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEAEAFF),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.add_rounded, size: 40, color: Color(0xFF4A3AFF)),

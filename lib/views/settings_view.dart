@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/task_service.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -268,7 +269,7 @@ class _SettingsViewState extends State<SettingsView> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: const Color(0xFFE2E8F0), width: 4),
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                           ),
                           child: CircleAvatar(
                             radius: 50,
@@ -331,7 +332,7 @@ class _SettingsViewState extends State<SettingsView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Daily Burnout Threshold', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-                      Text('${_burnoutThreshold.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4A3AFF))),
+                      Text(_burnoutThreshold.toStringAsFixed(0), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4A3AFF))),
                     ],
                   ),
                   Slider(
@@ -433,7 +434,7 @@ class _SettingsViewState extends State<SettingsView> {
                       ),
                       icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
                       label: const Text('Clear All Tasks', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                      onPressed: () {},
+                      onPressed: _confirmClearAllTasks,
                     ),
                   )
                 ],
@@ -463,11 +464,53 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
+  // 🗑️ 二次确认后清空云端所有任务（AppState 的实时流会自动刷新仪表盘）。
+  Future<void> _confirmClearAllTasks() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Clear All Tasks', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+        content: const Text('This permanently deletes every task synced to your account. This cannot be undone.', style: TextStyle(color: Color(0xFF64748B))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 0),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    try {
+      await TaskService().clearAllTasks();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('All tasks cleared.'),
+          backgroundColor: const Color(0xFF00C853),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to clear tasks: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   Widget _buildCardContainer({required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
       child: child,
     );
   }
@@ -500,7 +543,7 @@ class _SettingsViewState extends State<SettingsView> {
       title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
       value: value,
-      activeColor: Colors.white,
+      activeThumbColor: Colors.white,
       activeTrackColor: const Color(0xFF4A3AFF),
       inactiveTrackColor: const Color(0xFFE2E8F0),
       contentPadding: EdgeInsets.zero,

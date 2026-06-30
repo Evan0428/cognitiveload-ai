@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // 🟢 引入 Firestore 用来读取真实姓名
+import '../models/models.dart';
 import '../services/app_state.dart';
 import '../services/cognitive_load_engine.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
-
-class SchedulePlaceholder extends StatelessWidget { const SchedulePlaceholder({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('Schedule Page'))); }
-class AnalyticsPlaceholder extends StatelessWidget { const AnalyticsPlaceholder({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('Analytics Page'))); }
+import 'add_task_view.dart';
+import 'schedule_screen.dart';
+import 'wellbeing_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -103,10 +105,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final List<Widget> _tabs = [
+    final List<Widget> tabs = [
       _buildHomeContent(r, state),
-      const SchedulePlaceholder(),
-      const AnalyticsPlaceholder(),
+      const ScheduleScreen(),   // Lim — OCR timetable scanning + events
+      const WellbeingScreen(),  // Chua — HealthKit / Apple Watch readiness
       const SettingsView(),
     ];
 
@@ -115,12 +117,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: IndexedStack(
         index: _currentIndex,
-        children: _tabs,
+        children: tabs,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, -4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, -4)),
           ],
         ),
         child: BottomNavigationBar(
@@ -139,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Schedule'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), activeIcon: Icon(Icons.bar_chart), label: 'Analytics'),
+            BottomNavigationBarItem(icon: Icon(Icons.favorite_border), activeIcon: Icon(Icons.favorite), label: 'Wellbeing'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
           ],
         ),
@@ -205,10 +207,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 // 圆形仪表盘白卡
                 _buildGaugeCard(r),
+                const SizedBox(height: 16),
+
+                // ❤️ Chua 模块：生理就绪度迷你卡（点击进入 Wellbeing 页）
+                _buildReadinessCard(r),
                 const SizedBox(height: 32),
 
-                // 空日程状态提示
-                _buildEmptyTasksSection(),
+                // 今日任务（来自引擎，OCR + 手动 + Firestore 聚合）
+                _buildTasksSection(state),
                 const SizedBox(height: 32),
 
                 // ⚡ 捷径网格按键
@@ -219,7 +225,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: Icons.qr_code_scanner_rounded,
                         title: 'Scan Timetable',
                         iconColor: const Color(0xFF4A3AFF),
-                        onTap: () {},
+                        // Jump to the Schedule tab where the OCR scanner lives.
+                        onTap: () => setState(() => _currentIndex = 1),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -255,7 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -288,7 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            decoration: BoxDecoration(color: mainColor.withOpacity(0.12), borderRadius: BorderRadius.circular(100)),
+            decoration: BoxDecoration(color: mainColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(100)),
             child: Text(result.level == LoadLevel.safe ? "Low Load" : result.level.label, style: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: 14)),
           ),
           const SizedBox(height: 14),
@@ -298,23 +305,127 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildEmptyTasksSection() {
-    return Column(
-      children: [
-        const Icon(Icons.calendar_today_outlined, size: 54, color: Color(0xFFCBD5E1)),
-        const SizedBox(height: 14),
-        const Text('No tasks scheduled for today', style: TextStyle(color: Color(0xFF64748B), fontSize: 15, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4A3AFF),
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            elevation: 0,
-          ),
-          onPressed: () {},
-          child: const Text('Add Your First Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+  // ❤️ Chua 模块的就绪度迷你卡，点击可进入 Wellbeing 页查看 HR/HRV/Sleep 明细。
+  Widget _buildReadinessCard(CognitiveLoadResult r) {
+    final readiness = r.readinessScore;
+    final color = readiness >= 70
+        ? const Color(0xFF00C853)
+        : readiness >= 45
+            ? const Color(0xFFFF9800)
+            : const Color(0xFFF44336);
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = 2),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.favorite_rounded, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Physiological Readiness', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  SizedBox(height: 2),
+                  Text('From Apple Watch / HealthKit', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+            ),
+            Text('${readiness.toStringAsFixed(0)}%', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 今日任务区域：有任务则展示列表，否则展示空态引导。
+  Widget _buildTasksSection(AppState state) {
+    final today = DateTime.now();
+    final todays = state.events
+        .where((e) =>
+            e.start.year == today.year &&
+            e.start.month == today.month &&
+            e.start.day == today.day)
+        .toList();
+
+    if (todays.isEmpty) {
+      return Column(
+        children: [
+          const Icon(Icons.calendar_today_outlined, size: 54, color: Color(0xFFCBD5E1)),
+          const SizedBox(height: 14),
+          const Text('No tasks scheduled for today', style: TextStyle(color: Color(0xFF64748B), fontSize: 15, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A3AFF),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddTaskView()),
+            ),
+            child: const Text('Add Your First Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+        ],
+      );
+    }
+
+    final fmt = DateFormat.Hm();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Today's Tasks", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+            Text('${todays.length} item${todays.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...todays.map((e) => Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+              ),
+              child: Row(
+                children: [
+                  Container(width: 6, height: 36, decoration: BoxDecoration(color: e.intensity.color, borderRadius: BorderRadius.circular(3))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                        const SizedBox(height: 2),
+                        Text('${fmt.format(e.start)} – ${fmt.format(e.end)} • ${e.source.toUpperCase()}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: e.intensity.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(100)),
+                    child: Text(e.intensity.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: e.intensity.color)),
+                  ),
+                ],
+              ),
+            )),
       ],
     );
   }
@@ -329,14 +440,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(height: 16),

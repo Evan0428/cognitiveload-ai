@@ -33,6 +33,31 @@ extension TaskIntensityX on TaskIntensity {
     }
   }
 
+  /// 0-100 cognitive-load score used by the manual "Add Task" flow and the
+  /// dashboard. Mapped 1:1 from the NASA-TLX intensity band so the keyword
+  /// engine and the Firestore task list always agree.
+  int get score {
+    switch (this) {
+      case TaskIntensity.low:
+        return 20; // break, rest
+      case TaskIntensity.medium:
+        return 50; // lecture, meeting
+      case TaskIntensity.high:
+        return 70; // assignment, lab, project
+      case TaskIntensity.critical:
+        return 90; // exam, deadline, viva
+    }
+  }
+
+  /// Reverse mapping: classify a 0-100 score back into an intensity band so a
+  /// Firestore task (which stores a flat score) can drive the engine.
+  static TaskIntensity fromScore(int score) {
+    if (score >= 80) return TaskIntensity.critical;
+    if (score >= 60) return TaskIntensity.high;
+    if (score >= 35) return TaskIntensity.medium;
+    return TaskIntensity.low;
+  }
+
   Color get color {
     switch (this) {
       case TaskIntensity.low:
@@ -45,6 +70,35 @@ extension TaskIntensityX on TaskIntensity {
         return const Color(0xFFF44336);
     }
   }
+}
+
+/// Canonical keyword-based classifier — the single source of truth for the
+/// "modified NASA-TLX weighting logic" from the report. Both the OCR pipeline
+/// (Lim) and the manual Add-Task flow call this so they never disagree.
+class IntensityClassifier {
+  static const _critical = [
+    'exam', 'final', 'test', 'quiz', 'deadline', 'viva', 'defense', 'midterm'
+  ];
+  static const _high = [
+    'assignment', 'project', 'lab', 'report', 'presentation', 'submission',
+    'tutorial'
+  ];
+  static const _low = [
+    'break', 'lunch', 'rest', 'free', 'recess', 'gym', 'nap', 'sleep'
+  ];
+
+  /// Classify a task title into its NASA-TLX intensity band.
+  /// Order matters: highest-demand keywords win.
+  static TaskIntensity fromTitle(String title) {
+    final t = title.toLowerCase();
+    if (_critical.any(t.contains)) return TaskIntensity.critical;
+    if (_high.any(t.contains)) return TaskIntensity.high;
+    if (_low.any(t.contains)) return TaskIntensity.low;
+    return TaskIntensity.medium; // lectures / meetings default
+  }
+
+  /// Convenience: 0-100 score straight from a title.
+  static int scoreFromTitle(String title) => fromTitle(title).score;
 }
 
 /// A single schedule event, whether OCR-extracted or manually added.

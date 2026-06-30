@@ -74,18 +74,10 @@ class OcrService {
   }
 
   /// Keyword-based heuristic that assigns task intensity.
-  /// This is the modified NASA-TLX weighting logic from the report.
-  static TaskIntensity classifyIntensity(String title) {
-    final t = title.toLowerCase();
-    const critical = ['exam', 'final', 'test', 'quiz', 'deadline', 'viva', 'defense'];
-    const high = ['assignment', 'project', 'lab', 'report', 'presentation', 'submission'];
-    const low = ['break', 'lunch', 'rest', 'free', 'recess', 'gym'];
-
-    if (critical.any(t.contains)) return TaskIntensity.critical;
-    if (high.any(t.contains)) return TaskIntensity.high;
-    if (low.any(t.contains)) return TaskIntensity.low;
-    return TaskIntensity.medium; // lectures / meetings default
-  }
+  /// Delegates to the shared [IntensityClassifier] so the OCR pipeline and the
+  /// manual Add-Task flow apply the exact same modified NASA-TLX weighting.
+  static TaskIntensity classifyIntensity(String title) =>
+      IntensityClassifier.fromTitle(title);
 
   static const String _simulatedTimetableText = '''
 MONDAY TIMETABLE

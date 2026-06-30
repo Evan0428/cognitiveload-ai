@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'models.dart';
 
 class TaskModel {
   final String? id;
@@ -44,5 +45,46 @@ class TaskModel {
       cognitiveLoadScore: data['cognitiveLoadScore'] ?? 0,
       ratingType: data['ratingType'] ?? 'Automatic',
     );
+  }
+
+  /// Bridge a Firestore task into the analytical engine's [ScheduleEvent] so
+  /// manually-added tasks actually feed the dashboard cognitive-load gauge.
+  /// Intensity comes from the stored 0-100 score (so manual NASA-TLX overrides
+  /// are respected) and falls back to keyword classification.
+  ScheduleEvent toScheduleEvent() {
+    final start = _combine(date, startTime);
+    var end = _combine(date, endTime);
+    // Guard against an end time that parsed earlier than the start.
+    if (!end.isAfter(start)) end = start.add(const Duration(hours: 1));
+
+    final intensity = cognitiveLoadScore > 0
+        ? TaskIntensityX.fromScore(cognitiveLoadScore)
+        : IntensityClassifier.fromTitle(name);
+
+    return ScheduleEvent(
+      id: id ?? 'task_${start.microsecondsSinceEpoch}',
+      title: name,
+      start: start,
+      end: end,
+      intensity: intensity,
+      source: 'digital', // synced from Firestore (multi-source aggregation)
+    );
+  }
+
+  /// Parse a stored time string ("09:05 AM" / "14:30" / "2:30 PM") onto [day].
+  static DateTime _combine(DateTime day, String time) {
+    final t = time.trim().toUpperCase();
+    final isPm = t.contains('PM');
+    final isAm = t.contains('AM');
+    final digits = t.replaceAll(RegExp(r'[^0-9:]'), '');
+    final parts = digits.split(':');
+    int hour = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final minute = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+
+    if (isPm && hour < 12) hour += 12;
+    if (isAm && hour == 12) hour = 0;
+    hour = hour.clamp(0, 23);
+
+    return DateTime(day.year, day.month, day.day, hour, minute);
   }
 }

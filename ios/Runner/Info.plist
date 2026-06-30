@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,6 +26,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>CognitiveLoad AI uses the camera to scan your physical timetable and to set your profile photo.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>CognitiveLoad AI reads your Heart Rate, HRV, Sleep and Steps from Apple Health to calculate your physiological readiness and prevent burnout.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CognitiveLoad AI does not write to Apple Health; this permission is only requested by the HealthKit framework.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CognitiveLoad AI accesses your photos to import a timetable image or set your profile photo.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -41,9 +53,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 </dict>
 </plist>

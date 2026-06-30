@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/models.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
 
@@ -23,23 +24,14 @@ class AddTaskViewModel extends ChangeNotifier {
   TimeOfDay? get startTime => _startTime;
   TimeOfDay? get endTime => _endTime;
 
-  // 🟢 真实业务功能 1：基于 Task Name 关键字自动实时测算认知负载得分 (NLP 算法核心占位)
+  // 🟢 真实业务功能 1：基于 Task Name 关键字自动实时测算认知负载得分。
+  // 统一调用共享的 NASA-TLX 关键词分类器，确保和 OCR 模块评分完全一致：
+  //   exam/test/deadline -> 90 (Critical) ，assignment/lab/project -> 70 (High)，
+  //   lecture/meeting -> 50 (Medium)，break/rest -> 20 (Low)。
   void updateTaskName(String name) {
     _taskName = name;
-    String lowerName = name.toLowerCase();
-
-    // 根据你图里的 MPU test 算出了高分 80，我们这里做真实的关键词匹配功能：
-    if (lowerName.contains('test') || lowerName.contains('exam') || lowerName.contains('quiz')) {
-      _cognitiveLoadScore = 50;
-    } else if (lowerName.contains('presentation') || lowerName.contains('assignment')) {
-      _cognitiveLoadScore = 30;
-    } else if (lowerName.contains('lecture') || lowerName.contains('study')) {
-      _cognitiveLoadScore = 20;
-    } else if (lowerName.contains('rest') || lowerName.contains('break')) {
-      _cognitiveLoadScore = 15;
-    } else {
-      _cognitiveLoadScore = 50; // 无法识别的默认中等负载
-    }
+    _cognitiveLoadScore = IntensityClassifier.scoreFromTitle(name);
+    _ratingType = 'Automatic';
     notifyListeners();
   }
 
@@ -64,9 +56,10 @@ class AddTaskViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 格式化时间段展示字符串
-      final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')} ${_startTime!.period == DayPeriod.am ? 'AM' : 'PM'}";
-      final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')} ${_endTime!.period == DayPeriod.am ? 'AM' : 'PM'}";
+      // 格式化时间段展示字符串（修正：之前用 24 小时制的 hour 拼接 AM/PM，会产生
+      // 像 "14:30 PM" 这种错误格式。这里用 12 小时制的 hourOfPeriod 正确换算。）
+      final String startStr = _format12h(_startTime!);
+      final String endStr = _format12h(_endTime!);
 
       final newTask = TaskModel(
         name: _taskName,
@@ -87,6 +80,14 @@ class AddTaskViewModel extends ChangeNotifier {
       _isSaving = false;
       notifyListeners();
     }
+  }
+
+  // 12 小时制格式化，例如 09:05 AM / 02:30 PM。
+  String _format12h(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '${h.toString().padLeft(2, '0')}:$m $period';
   }
 
   void _resetForm() {
