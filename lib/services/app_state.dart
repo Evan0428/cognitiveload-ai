@@ -32,6 +32,17 @@ class AppState extends ChangeNotifier {
   CognitiveLoadResult? _result;
   bool _loading = false;
 
+  /// One snapshot per day for up to 14 days — feeds the rolling baseline.
+  final List<PhysiologicalSnapshot> _history = [];
+
+  /// Real-time strain tracking: periodic physiology refresh (Chua's module).
+  Timer? _strainTimer;
+  static const Duration strainInterval = Duration(minutes: 15);
+
+  // Notification throttling so real alerts don't fire on every recompute.
+  LoadLevel? _lastNotifiedLevel;
+  DateTime? _lastNotifiedAt;
+
   /// User's daily burnout threshold (0-100) from their profile; alerts fire
   /// when the combined load exceeds it.
   double _burnoutThreshold = 100;
@@ -51,12 +62,29 @@ class AppState extends ChangeNotifier {
   bool get loading => _loading;
   double get burnoutThreshold => _burnoutThreshold;
 
+  /// Rolling personal baseline from prior days' snapshots (today excluded so a
+  /// bad morning doesn't drag its own reference down).
+  PhysiologicalBaseline? get baseline {
+    final now = DateTime.now();
+    final prior = _history
+        .where((s) => !(s.timestamp.year == now.year &&
+            s.timestamp.month == now.month &&
+            s.timestamp.day == now.day))
+        .toList();
+    if (prior.isEmpty) return null;
+    return PhysiologicalBaseline.fromSnapshots(prior);
+  }
+
   Future<void> init() async {
     await notifier.init();
     await _load();
     await refreshPhysiology();
     _listenToAuth();
     _recompute();
+    // Real-time workload strain tracking: re-sample physiology periodically
+    // so HR spikes during a work session are caught, not just on manual sync.
+    _strainTimer =
+        Timer.periodic(strainInterval, (_) => refreshPhysiology());
   }
 
   // ---------------- Firestore task sync (the bridge) ----------------
@@ -102,6 +130,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _authSub?.cancel();
     _taskSub?.cancel();
+    _strainTimer?.cancel();
     super.dispose();
   }
 
@@ -171,7 +200,7 @@ class AppState extends ChangeNotifier {
   // ---------------- Fusion + alerts ----------------
 
   void _recompute() {
-    _result = engine.analyse(events, _snapshot);
+    _result = engine.analyse(events, _snapshot, baseline: baseline);
     final r = _result!;
     // Fire a proactive notification on high/overload OR when the combined load
     // crosses the user's personal burnout threshold (haptic on Apple Watch).
@@ -179,10 +208,24 @@ class AppState extends ChangeNotifier {
     if (r.level == LoadLevel.overload ||
         r.level == LoadLevel.high ||
         overThreshold) {
-      notifier.show(
-        'CognitiveLoad AI — ${r.level.label}',
-        r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
-      );
+      // Throttle: notify only when the level escalates, or after a 30-minute
+      // cooldown — otherwise every task edit / periodic refresh would buzz.
+      final escalated = _lastNotifiedLevel == null ||
+          r.level.index > _lastNotifiedLevel!.index;
+      final cooledDown = _lastNotifiedAt == null ||
+          DateTime.now().difference(_lastNotifiedAt!) >
+              const Duration(minutes: 30);
+      if (escalated || cooledDown) {
+        _lastNotifiedLevel = r.level;
+        _lastNotifiedAt = DateTime.now();
+        notifier.show(
+          'CognitiveLoad AI — ${r.level.label}',
+          r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
+        );
+      }
+    } else {
+      // Back in the safe zone: allow the next escalation to notify again.
+      _lastNotifiedLevel = null;
     }
   }
 
@@ -198,6 +241,19 @@ class AppState extends ChangeNotifier {
     if (_snapshot == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('snapshot', jsonEncode(_snapshot!.toJson()));
+
+    // Upsert today's entry into the rolling history (one per day, latest
+    // wins) and prune anything older than 14 days.
+    final s = _snapshot!;
+    _history.removeWhere((h) =>
+        h.timestamp.year == s.timestamp.year &&
+        h.timestamp.month == s.timestamp.month &&
+        h.timestamp.day == s.timestamp.day);
+    _history.add(s);
+    final cutoff = DateTime.now().subtract(const Duration(days: 14));
+    _history.removeWhere((h) => h.timestamp.isBefore(cutoff));
+    await prefs.setString('snapshotHistory',
+        jsonEncode(_history.map((h) => h.toJson()).toList()));
   }
 
   Future<void> _load() async {
@@ -214,6 +270,13 @@ class AppState extends ChangeNotifier {
     final snap = prefs.getString('snapshot');
     if (snap != null) {
       _snapshot = PhysiologicalSnapshot.fromJson(jsonDecode(snap));
+    }
+    final hist = prefs.getString('snapshotHistory');
+    if (hist != null) {
+      _history
+        ..clear()
+        ..addAll((jsonDecode(hist) as List)
+            .map((j) => PhysiologicalSnapshot.fromJson(j)));
     }
   }
 }

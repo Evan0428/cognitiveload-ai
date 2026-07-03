@@ -243,15 +243,15 @@
     },
     {
       "name": "google_mlkit_commons",
-      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.8.1",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.1",
       "packageUri": "lib/",
-      "languageVersion": "2.16"
+      "languageVersion": "3.8"
     },
     {
       "name": "google_mlkit_text_recognition",
-      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/google_mlkit_text_recognition-0.13.1",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/google_mlkit_text_recognition-0.15.1",
       "packageUri": "lib/",
-      "languageVersion": "2.16"
+      "languageVersion": "3.8"
     },
     {
       "name": "health",

@@ -180,3 +180,43 @@ class PhysiologicalSnapshot {
         steps: (j['steps'] as num).toInt(),
       );
 }
+
+/// Rolling personal baseline built from up to 14 days of snapshots
+/// (report section 2.4.4 — dynamic intra-individual thresholding).
+/// The readiness model compares today's readings against this instead of
+/// one-size-fits-all population norms.
+class PhysiologicalBaseline {
+  final double avgSleepHours;
+  final double avgHrv;
+  final double avgHeartRate;
+  final int days; // how many days of history back this baseline
+
+  const PhysiologicalBaseline({
+    required this.avgSleepHours,
+    required this.avgHrv,
+    required this.avgHeartRate,
+    required this.days,
+  });
+
+  /// Baselines need at least this many days before they influence scoring.
+  static const int minDays = 3;
+
+  bool get isReliable => days >= minDays;
+
+  factory PhysiologicalBaseline.fromSnapshots(
+      List<PhysiologicalSnapshot> history) {
+    final n = history.length;
+    double sumSleep = 0, sumHrv = 0, sumHr = 0;
+    for (final s in history) {
+      sumSleep += s.sleepHours;
+      sumHrv += s.hrv;
+      sumHr += s.heartRate;
+    }
+    return PhysiologicalBaseline(
+      avgSleepHours: n > 0 ? sumSleep / n : 0,
+      avgHrv: n > 0 ? sumHrv / n : 0,
+      avgHeartRate: n > 0 ? sumHr / n : 0,
+      days: n,
+    );
+  }
+}

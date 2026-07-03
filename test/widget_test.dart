@@ -80,6 +80,66 @@ void main() {
           greaterThan(engine.computeReadiness(strained)));
     });
 
+    test('personal baseline lifts readiness for a naturally short sleeper',
+        () {
+      // Someone who always sleeps ~6.5h: against the universal 8h target they
+      // look under-recovered, but against their own baseline they are normal.
+      final today = PhysiologicalSnapshot(
+        timestamp: DateTime.now(),
+        heartRate: 64,
+        hrv: 55,
+        sleepHours: 6.5,
+        steps: 6000,
+      );
+      const personalBaseline = PhysiologicalBaseline(
+        avgSleepHours: 6.5,
+        avgHrv: 55,
+        avgHeartRate: 64,
+        days: 14,
+      );
+      final universal = engine.computeReadiness(today);
+      final personal =
+          engine.computeReadiness(today, baseline: personalBaseline);
+      expect(personal, greaterThan(universal));
+    });
+
+    test('baseline below minDays is ignored', () {
+      final today = PhysiologicalSnapshot(
+        timestamp: DateTime.now(),
+        heartRate: 64,
+        hrv: 55,
+        sleepHours: 6.5,
+        steps: 6000,
+      );
+      const tooFewDays = PhysiologicalBaseline(
+        avgSleepHours: 6.5,
+        avgHrv: 55,
+        avgHeartRate: 64,
+        days: 2,
+      );
+      expect(engine.computeReadiness(today, baseline: tooFewDays),
+          engine.computeReadiness(today));
+    });
+
+    test('acute HR spike vs personal baseline raises a strain alert', () {
+      const restingBaseline = PhysiologicalBaseline(
+        avgSleepHours: 7.5,
+        avgHrv: 60,
+        avgHeartRate: 60,
+        days: 10,
+      );
+      final spiking = PhysiologicalSnapshot(
+        timestamp: DateTime.now(),
+        heartRate: 85, // > 60 * 1.25
+        hrv: 60,
+        sleepHours: 7.5,
+        steps: 5000,
+      );
+      final result =
+          engine.analyse(const [], spiking, baseline: restingBaseline);
+      expect(result.alerts.any((a) => a.contains('Heart-rate spike')), isTrue);
+    });
+
     test('high workload + low readiness escalates the load level', () {
       final events = [
         event('Final Exam', 9, 12),
