@@ -243,13 +243,13 @@
     },
     {
       "name": "google_mlkit_commons",
-      "rootUri": "file:///C:/Users/CYBORG/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_commons-0.8.1",
+      "rootUri": "file:///C:/Users/CYBORG/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_commons-0.9.0",
       "packageUri": "lib/",
       "languageVersion": "2.16"
     },
     {
       "name": "google_mlkit_text_recognition",
-      "rootUri": "file:///C:/Users/CYBORG/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_text_recognition-0.13.1",
+      "rootUri": "file:///C:/Users/CYBORG/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_text_recognition-0.14.0",
       "packageUri": "lib/",
       "languageVersion": "2.16"
     },

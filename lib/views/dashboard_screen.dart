@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 🟢 引入 Firestore 用来读取真实姓名
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/app_state.dart';
 import '../services/cognitive_load_engine.dart';
+import '../view_models/add_task_viewmodel.dart'; 
+import '../models/task_model.dart';
+import '../models/models.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
-
-class SchedulePlaceholder extends StatelessWidget { const SchedulePlaceholder({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('Schedule Page'))); }
-class AnalyticsPlaceholder extends StatelessWidget { const AnalyticsPlaceholder({super.key}); @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('Analytics Page'))); }
+import 'schedule_screen.dart';
+import 'scan_timetable_view.dart';
+import 'analytics_view.dart'; 
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,15 +22,14 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
-  String _realName = '...'; // 🟢 默认先显示加载状态的三个点，避免写死兜底名字尴尬
+  String _realName = '...';
 
   @override
   void initState() {
     super.initState();
-    _fetchUserNameFromFirestore(); // 🟢 页面一诞生就去云端捞名字
+    _fetchUserNameFromFirestore();
   }
 
-  // 📥 核心功能：直接去 Firestore 拿注册时填写的名字
   Future<void> _fetchUserNameFromFirestore() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -41,7 +43,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (userDoc.exists && userDoc.data() != null) {
         final data = userDoc.data() as Map<String, dynamic>;
         setState(() {
-          // 💡 这里的 'name' 必须和你注册时存在 Firestore 的字段大小写一模一样
           _realName = data['name'] ?? 'User';
         });
       }
@@ -91,6 +92,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _editTask(ScheduleEvent event) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider(
+          create: (_) => AddTaskViewModel()..loadTask(TaskModel(
+            id: event.id,
+            name: event.title,
+            date: event.start,
+            startTime: "${event.start.hour.toString().padLeft(2, '0')}:${event.start.minute.toString().padLeft(2, '0')}",
+            endTime: "${event.end.hour.toString().padLeft(2, '0')}:${event.end.minute.toString().padLeft(2, '0')}",
+            cognitiveLoadScore: event.cognitiveLoadScore,
+            ratingType: event.ratingType,
+          )),
+          child: const TaskManagerView(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -105,8 +126,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final List<Widget> _tabs = [
       _buildHomeContent(r, state),
-      const SchedulePlaceholder(),
-      const AnalyticsPlaceholder(),
+      const ScheduleScreen(), 
+      const AnalyticsView(), 
       const SettingsView(),
     ];
 
@@ -148,9 +169,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHomeContent(CognitiveLoadResult r, AppState state) {
+    final today = DateTime.now();
+    final todayTasks = state.events.where((e) =>
+    e.start.year == today.year &&
+        e.start.month == today.month &&
+        e.start.day == today.day
+    ).toList();
+
     return Stack(
       children: [
-        // 🌌 1. 顶部渐变大底板
         Container(
           width: double.infinity,
           height: 240,
@@ -167,7 +194,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
 
-        // 2. 内容滑动区域
         SafeArea(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -175,20 +201,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    const Spacer(),
-                    IconButton(
-                      alignment: Alignment.centerRight,
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
-                      onPressed: () => _showLogoutDialog(context),
-                    ),
-                  ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
+                    onPressed: () => _showLogoutDialog(context),
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                // 👋 Welcome 欢迎区域
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Column(
@@ -196,22 +219,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 2),
-                      // 🟢 这里直接塞入我们从 Firestore 异步抓到的真实名字
                       Text(_realName, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // 圆形仪表盘白卡
                 _buildGaugeCard(r),
                 const SizedBox(height: 32),
 
-                // 空日程状态提示
-                _buildEmptyTasksSection(),
+                todayTasks.isEmpty
+                    ? _buildEmptyTasksSection()
+                    : _buildActiveTasksSection(todayTasks),
+
                 const SizedBox(height: 32),
 
-                // ⚡ 捷径网格按键
                 Row(
                   children: [
                     Expanded(
@@ -219,7 +241,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: Icons.qr_code_scanner_rounded,
                         title: 'Scan Timetable',
                         iconColor: const Color(0xFF4A3AFF),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ScanTimetableView()),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -231,7 +258,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const TaskManagerView()),
+                            MaterialPageRoute(
+                              builder: (context) => ChangeNotifierProvider(
+                                create: (_) => AddTaskViewModel(),
+                                child: const TaskManagerView(),
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -312,8 +344,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider(
+                  create: (_) => AddTaskViewModel(),
+                  child: const TaskManagerView(),
+                ),
+              ),
+            );
+          },
           child: const Text('Add Your First Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveTasksSection(List<ScheduleEvent> tasks) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _currentIndex = 1),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Today's Schedule", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              TextContainer(text: '${tasks.length} Tasks', color: const Color(0xFF4A3AFF)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tasks.length > 3 ? 3 : tasks.length,
+          itemBuilder: (context, index) {
+            final e = tasks[index];
+            return InkWell(
+              onTap: () => _editTask(e),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4A3AFF),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B))),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${e.start.hour.toString().padLeft(2,'0')}:${e.start.minute.toString().padLeft(2,'0')} - ${e.end.hour.toString().padLeft(2,'0')}:${e.end.minute.toString().padLeft(2,'0')}",
+                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.bolt, color: Colors.amber.shade600, size: 18),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -344,6 +453,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class TextContainer extends StatelessWidget {
+  final String text;
+  final Color color;
+  const TextContainer({super.key, required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 }

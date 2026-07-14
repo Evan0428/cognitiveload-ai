@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/auth_view_model.dart';
+import '../services/app_state.dart'; // 🟢 1. 引入全局 AppState 支持数据刷洗
 import 'register_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -37,7 +38,7 @@ class _LoginViewState extends State<LoginView> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Form(
-            key: _formKey, // 绑定表单 Key
+            key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -64,7 +65,7 @@ class _LoginViewState extends State<LoginView> {
                 ),
                 const SizedBox(height: 40),
 
-                // 3. Email 输入框 (🛡️ 升级：加入严格的合法邮箱格式校验)
+                // 3. Email 输入框
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -86,15 +87,13 @@ class _LoginViewState extends State<LoginView> {
                           prefixIcon: Icon(Icons.mail_outline, color: Colors.grey),
                           contentPadding: EdgeInsets.symmetric(vertical: 16),
                         ),
-                        // 🟢 核心改动：在表单内部校验用户输入的是不是一串合法的 Email
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'This field cannot be empty';
                           }
-                          // 标准电子邮箱正则表达式
                           final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                           if (!emailRegex.hasMatch(val.trim())) {
-                            return 'Please enter a valid email address'; // 乱打邮箱比如 "hdb" 会直接触发这行提示！
+                            return 'Please enter a valid email address';
                           }
                           return null;
                         },
@@ -227,7 +226,7 @@ class _LoginViewState extends State<LoginView> {
                 ),
                 const SizedBox(height: 10),
 
-                // 6. Sign In 按钮 (🔒 史诗级升级：完美区分【密码错误】与【邮箱未注册】)
+                // 6. Sign In 按钮
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -238,7 +237,6 @@ class _LoginViewState extends State<LoginView> {
                       elevation: 0,
                     ),
                     onPressed: () async {
-                      // 触发本地邮箱格式拦截
                       if (_formKey.currentState!.validate()) {
                         final emailInput = _emailController.text.trim();
                         final passwordInput = _passwordController.text;
@@ -250,7 +248,6 @@ class _LoginViewState extends State<LoginView> {
                               .where('email', isEqualTo: emailInput)
                               .get();
 
-                          // 如果查出来的结果是空的，说明这个 Email 压根没在系统里注册过
                           if (userQuery.docs.isEmpty) {
                             showDialog(
                               context: context,
@@ -272,21 +269,24 @@ class _LoginViewState extends State<LoginView> {
                                 ],
                               ),
                             );
-                            return; // 🛑 拦截住，不让它往下跑 Firebase Auth 登录，省去无谓的等待
+                            return;
                           }
                         } catch (e) {
-                          // 如果 Firestore 读取失败，我们先跳过，让底下的 Auth 兜底
                           print("Firestore check bypass: $e");
                         }
 
                         // 2. 邮箱存在，开始验证密码
                         String? error = await authViewModel.loginUser(emailInput, passwordInput);
 
-                        if (error != null) {
+                        if (error == null) {
+                          // 🟢 2. 核心大联动补丁：登录成功后，立刻洗掉旧设备的 6 分脏缓存，主动把当前账号的所有任务拉回来计算
+                          if (context.mounted) {
+                            await Provider.of<AppState>(context, listen: false).syncTasksFromFirestore();
+                          }
+                        } else {
                           String alertMessage = 'Login failed. Please try again.';
                           final lowerError = error.toLowerCase();
 
-                          // 🔴 此时进来的错误，由于前面已经过滤了“邮箱不存在”，所以 100% 就是密码打错了！
                           if (lowerError.contains('wrong-password') ||
                               lowerError.contains('invalid-credential') ||
                               lowerError.contains('credential')) {
@@ -295,7 +295,6 @@ class _LoginViewState extends State<LoginView> {
                             alertMessage = 'Too many attempts. Account temporarily locked. Try again later.';
                           }
 
-                          // 弹出高颜值密码错误提示框
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(

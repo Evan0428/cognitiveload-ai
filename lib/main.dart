@@ -4,11 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'view_models/auth_view_model.dart';
-import 'view_models/add_task_viewmodel.dart'; // 🟢 导入新写的添加任务 ViewModel
 import 'views/login_view.dart';
 import 'theme/app_theme.dart';
 import 'services/app_state.dart';
-import 'views/dashboard_screen.dart'; // 🟢 引入我们最新版、带4个Tab管理的自洽式主大屏
+import 'views/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,8 +28,6 @@ class CognitiveLoadApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..init()),
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        // 🟢 核心修复：在这里向全局注册 AddTaskViewModel，供添加任务相关的 View 正常 Listen
-        ChangeNotifierProvider(create: (_) => AddTaskViewModel()),
       ],
       child: MaterialApp(
         title: 'CognitiveLoad AI',
@@ -55,13 +52,11 @@ class AuthenticationWrapper extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-
-        // 🟢 如果用户已成功登录，彻底舍弃旧的 HomeShell，直接跳转到最新的 DashboardScreen()
         if (snapshot.hasData) {
+          // 🟢 使用 DashboardScreen 作为唯一的导航外壳
+          // 它已经包含了：Home, Schedule, Analytics, Settings
           return const DashboardScreen();
         }
-
-        // 🔴 如果未登录，正常前往登录界面
         return const LoginView();
       },
     );

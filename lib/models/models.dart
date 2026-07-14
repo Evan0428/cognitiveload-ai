@@ -59,6 +59,10 @@ class ScheduleEvent {
   /// Supports multi-source aggregation (PS2 - Lack of Centralization).
   String source;
 
+  /// 🟢 Added for edit support
+  int cognitiveLoadScore;
+  String ratingType;
+
   ScheduleEvent({
     required this.id,
     required this.title,
@@ -66,6 +70,8 @@ class ScheduleEvent {
     required this.end,
     required this.intensity,
     this.source = 'manual',
+    this.cognitiveLoadScore = 50,
+    this.ratingType = 'Automatic',
   });
 
   double get durationHours => end.difference(start).inMinutes / 60.0;
@@ -80,6 +86,8 @@ class ScheduleEvent {
         'end': end.toIso8601String(),
         'intensity': intensity.index,
         'source': source,
+        'cognitiveLoadScore': cognitiveLoadScore,
+        'ratingType': ratingType,
       };
 
   factory ScheduleEvent.fromJson(Map<String, dynamic> j) => ScheduleEvent(
@@ -89,6 +97,8 @@ class ScheduleEvent {
         end: DateTime.parse(j['end']),
         intensity: TaskIntensity.values[j['intensity']],
         source: j['source'] ?? 'manual',
+        cognitiveLoadScore: j['cognitiveLoadScore'] ?? 50,
+        ratingType: j['ratingType'] ?? 'Automatic',
       );
 }
 

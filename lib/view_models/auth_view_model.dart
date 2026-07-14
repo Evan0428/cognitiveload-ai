@@ -11,13 +11,12 @@ class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // 改变 Loading 状态并通知 UI
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  // 处理注册 (FR 1.1, FR 1.4, FR 1.5)
+
   Future<String?> registerUser({
     required String name,
     required String email,
@@ -27,6 +26,16 @@ class AuthViewModel extends ChangeNotifier {
     required double burnoutThreshold,
   }) async {
     _setLoading(true);
+
+    bool isPasswordValid(String password) {
+      if (password.length < 8) return false; // 至少 8 个字符
+      if (!password.contains(RegExp(r'[A-Z]'))) return false; // 至少一个大写字母
+      if (!password.contains(RegExp(r'[a-z]'))) return false; // 至少一个小写字母
+      if (!password.contains(RegExp(r'[0-9]'))) return false; // 至少一个数字
+      if (!password.contains(RegExp(r'[!@#\$&*~?]'))) return false; // 至少一个特殊字符
+      return true;
+    }
+
     try {
       // 1. 调用底层的 AuthService 在 Firebase Auth 创建账号
       UserCredential credential = await _authService.signUpWithEmailAndPassword(email, password);

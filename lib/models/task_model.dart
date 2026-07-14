@@ -7,7 +7,7 @@ class TaskModel {
   final String startTime;
   final String endTime;
   final int cognitiveLoadScore;
-  final String ratingType; // 'Automatic' 或 'Manual (NASA-TLX)'
+  final String ratingType;
 
   TaskModel({
     this.id,
@@ -19,11 +19,10 @@ class TaskModel {
     required this.ratingType,
   });
 
-  // 转为 Firestore 所需的 Map
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'date': Timestamp.fromDate(date), // Firestore 官方时间戳格式
+      'date': Timestamp.fromDate(date),
       'startTime': startTime,
       'endTime': endTime,
       'cognitiveLoadScore': cognitiveLoadScore,
@@ -32,17 +31,26 @@ class TaskModel {
     };
   }
 
-  // 从 Firestore 读取时解析
   factory TaskModel.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
     return TaskModel(
       id: doc.id,
-      name: data['name'] ?? '',
-      date: (data['date'] as Timestamp).toDate(),
-      startTime: data['startTime'] ?? '',
-      endTime: data['endTime'] ?? '',
-      cognitiveLoadScore: data['cognitiveLoadScore'] ?? 0,
-      ratingType: data['ratingType'] ?? 'Automatic',
+      name: data['name'] as String? ?? '',
+      date: _parseDate(data['date']),
+      startTime: data['startTime'] as String? ?? '09:00',
+      endTime: data['endTime'] as String? ?? '10:00',
+      cognitiveLoadScore: (data['cognitiveLoadScore'] as num?)?.toInt() ?? 50,
+      ratingType: data['ratingType'] as String? ?? 'Automatic',
     );
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 }

@@ -82,16 +82,24 @@ class CognitiveLoadEngine {
     List<ScheduleEvent> events,
     PhysiologicalSnapshot? snapshot,
   ) {
+    if (events.isEmpty) {
+      return CognitiveLoadResult(
+        workloadScore: 0.0,
+        readinessScore: 0.0,
+        combinedLoad: 0.0,
+        level: LoadLevel.safe,
+        alerts: [],
+      );
+    }
+
     final workload = computeWorkloadScore(events);
-    final readiness = snapshot != null ? computeReadiness(snapshot) : 100.0;
+    const readiness = 100.0;
 
     // Normalise workload to 0-100 (cap raw score at 40 for a full bar).
     final workloadNorm = (workload / 40.0 * 100).clamp(0.0, 100.0);
 
-    // Demand pressure rises with workload AND with low readiness.
-    final readinessPressure = 100 - readiness;
-    final combined =
-        (workloadNorm * 0.6 + readinessPressure * 0.4).clamp(0.0, 100.0);
+    // Health/device readiness is intentionally ignored until that module is integrated.
+    final combined = workloadNorm;
 
     final level = switch (combined) {
       < 35 => LoadLevel.safe,

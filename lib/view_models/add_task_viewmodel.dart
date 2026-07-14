@@ -6,6 +6,7 @@ class AddTaskViewModel extends ChangeNotifier {
   final TaskService _taskService = TaskService();
 
   // 表单响应状态
+  String? _editingTaskId;
   String _taskName = '';
   DateTime? _selectedDate;
   TimeOfDay? _startTime;
@@ -16,6 +17,8 @@ class AddTaskViewModel extends ChangeNotifier {
   bool _isSaving = false;
 
   // Getters
+  String? get editingTaskId => _editingTaskId;
+  String get taskName => _taskName;
   int get cognitiveLoadScore => _cognitiveLoadScore;
   String get ratingType => _ratingType;
   bool get isSaving => _isSaving;
@@ -23,23 +26,60 @@ class AddTaskViewModel extends ChangeNotifier {
   TimeOfDay? get startTime => _startTime;
   TimeOfDay? get endTime => _endTime;
 
-  // 🟢 真实业务功能 1：基于 Task Name 关键字自动实时测算认知负载得分 (NLP 算法核心占位)
+  // 🟢 加载已有任务进入编辑模式
+  void loadTask(TaskModel task) {
+    _editingTaskId = task.id;
+    _taskName = task.name;
+    _selectedDate = task.date;
+    
+    // 解析时间字符串 (HH:mm)
+    final startParts = task.startTime.split(':');
+    if (startParts.length == 2) {
+      _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+    }
+    
+    final endParts = task.endTime.split(':');
+    if (endParts.length == 2) {
+      _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+    }
+
+    _cognitiveLoadScore = task.cognitiveLoadScore;
+    _ratingType = task.ratingType;
+    notifyListeners();
+  }
+
+  // 🟢 核心统一：全系统最高指挥官级别的关键字 NLP 测算分值字典
   void updateTaskName(String name) {
     _taskName = name;
+    
+    // 如果是手动评分模式，不再自动更新分数
+    if (_ratingType.contains('Manual')) {
+      notifyListeners();
+      return;
+    }
+
     String lowerName = name.toLowerCase();
 
-    // 根据你图里的 MPU test 算出了高分 80，我们这里做真实的关键词匹配功能：
-    if (lowerName.contains('test') || lowerName.contains('exam') || lowerName.contains('quiz')) {
-      _cognitiveLoadScore = 50;
+    if (lowerName.contains('exam')) {
+      _cognitiveLoadScore = 95;
+    } else if (lowerName.contains('test')) {
+      _cognitiveLoadScore = 80;
+    } else if (lowerName.contains('quiz')) {
+      _cognitiveLoadScore = 75;
+    } else if (lowerName.contains('lab')) {
+      _cognitiveLoadScore = 65;
     } else if (lowerName.contains('presentation') || lowerName.contains('assignment')) {
-      _cognitiveLoadScore = 30;
+      _cognitiveLoadScore = 60;
     } else if (lowerName.contains('lecture') || lowerName.contains('study')) {
+      _cognitiveLoadScore = 45;
+    } else if (lowerName.contains('gym') || lowerName.contains('workout')) {
       _cognitiveLoadScore = 20;
     } else if (lowerName.contains('rest') || lowerName.contains('break')) {
       _cognitiveLoadScore = 15;
     } else {
-      _cognitiveLoadScore = 50; // 无法识别的默认中等负载
+      _cognitiveLoadScore = 50;
     }
+
     notifyListeners();
   }
 
@@ -47,14 +87,13 @@ class AddTaskViewModel extends ChangeNotifier {
   void setStartTime(TimeOfDay time) { _startTime = time; notifyListeners(); }
   void setEndTime(TimeOfDay time) { _endTime = time; notifyListeners(); }
 
-  // 功能 2：未来留给 NASA-TLX 弹窗手动微调分数的接口
   void setManualScore(int score) {
     _cognitiveLoadScore = score;
     _ratingType = 'Manual (NASA-TLX)';
     notifyListeners();
   }
 
-  // 🟢 真实业务功能 3：表单验证并提交到 Firebase
+  // 表单验证并提交到 Firebase
   Future<bool> submitTask() async {
     if (_taskName.isEmpty || _selectedDate == null || _startTime == null || _endTime == null) {
       return false;
@@ -64,11 +103,11 @@ class AddTaskViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 格式化时间段展示字符串
-      final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')} ${_startTime!.period == DayPeriod.am ? 'AM' : 'PM'}";
-      final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')} ${_endTime!.period == DayPeriod.am ? 'AM' : 'PM'}";
+      final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
+      final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
 
-      final newTask = TaskModel(
+      final taskData = TaskModel(
+        id: _editingTaskId,
         name: _taskName,
         date: _selectedDate!,
         startTime: startStr,
@@ -77,7 +116,12 @@ class AddTaskViewModel extends ChangeNotifier {
         ratingType: _ratingType,
       );
 
-      await _taskService.saveTask(newTask);
+      if (_editingTaskId != null) {
+        await _taskService.updateTask(taskData);
+      } else {
+        await _taskService.saveTask(taskData);
+      }
+      
       _resetForm();
       return true;
     } catch (e) {
@@ -90,11 +134,13 @@ class AddTaskViewModel extends ChangeNotifier {
   }
 
   void _resetForm() {
+    _editingTaskId = null;
     _taskName = '';
     _selectedDate = null;
     _startTime = null;
     _endTime = null;
     _cognitiveLoadScore = 50;
     _ratingType = 'Automatic';
+    notifyListeners();
   }
 }

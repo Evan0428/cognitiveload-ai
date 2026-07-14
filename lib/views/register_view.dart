@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 🟢 引入用于在本地校验手机号是否重复
+import 'package:cloud_firestore/cloud_firestore.dart'; // 🟢 用于在本地校验手机号是否重复
 import '../view_models/auth_view_model.dart';
 import 'setup_profile_view.dart'; // 🟢 导入新页面
 
@@ -22,6 +22,9 @@ class _RegisterViewState extends State<RegisterView> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // 🟢 实时记录输入的密码，以便让下方的提示清单产生动态变色效果
+  String _inputPassword = '';
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -32,9 +35,26 @@ class _RegisterViewState extends State<RegisterView> {
     super.dispose();
   }
 
+  // 🟢 校验密码强度的核心逻辑函数
+  bool _isPasswordValid(String password) {
+    if (password.length < 8) return false;
+    if (!password.contains(RegExp(r'[A-Z]'))) return false;
+    if (!password.contains(RegExp(r'[a-z]'))) return false;
+    if (!password.contains(RegExp(r'[0-9]'))) return false;
+    if (!password.contains(RegExp(r'[!@#\$&*~]'))) return false;
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final authViewModel = Provider.of<AuthViewModel>(context);
+
+    // 🟢 提取出5个独立的条件结果，用于前端 UI 实时改变颜色状态
+    bool hasMinLength = _inputPassword.length >= 8;
+    bool hasUppercase = _inputPassword.contains(RegExp(r'[A-Z]'));
+    bool hasLowercase = _inputPassword.contains(RegExp(r'[a-z]'));
+    bool hasDigit = _inputPassword.contains(RegExp(r'[0-9]'));
+    bool hasSpecialChar = _inputPassword.contains(RegExp(r'[!@#\$&*~]'));
 
     return Scaffold(
       backgroundColor: const Color(0xFFEDF1F9),
@@ -80,12 +100,18 @@ class _RegisterViewState extends State<RegisterView> {
                 _buildCustomTextField(controller: _mobileController, hintText: 'e.g:0123456789', labelText: 'Mobile Number', icon: Icons.phone_android_outlined),
                 const SizedBox(height: 16),
 
+                // 🔑 密码输入框
                 _buildCustomTextField(
                   controller: _passwordController,
                   hintText: '********',
                   labelText: 'Password',
                   icon: Icons.lock_outline,
                   obscureText: _obscurePassword,
+                  onChanged: (val) {
+                    setState(() {
+                      _inputPassword = val; // 🟢 输入时动态改变要求看板的状态
+                    });
+                  },
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -96,6 +122,35 @@ class _RegisterViewState extends State<RegisterView> {
                         _obscurePassword = !_obscurePassword;
                       });
                     },
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'This field cannot be empty';
+                    if (!_isPasswordValid(val)) return 'Password does not meet all safety criteria';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // 📋 🟢 强密码条件实时可视化动态看板
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Password Requirements:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                      const SizedBox(height: 10),
+                      _buildRequirementRow('At least 8 characters', hasMinLength),
+                      _buildRequirementRow('One uppercase letter (A-Z)', hasUppercase),
+                      _buildRequirementRow('One lowercase letter (a-z)', hasLowercase),
+                      _buildRequirementRow('One digit (0-9)', hasDigit),
+                      _buildRequirementRow('One special character (!@#\$&*~)', hasSpecialChar),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -211,6 +266,31 @@ class _RegisterViewState extends State<RegisterView> {
     );
   }
 
+  // 🟢 辅助组件：渲染每一条密码条件的勾选/圆点状态
+  Widget _buildRequirementRow(String text, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 16,
+            color: isMet ? const Color(0xFF10B981) : const Color(0xFF94A3B8), // 满足变翠绿，未满足保持浅灰
+          ),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: isMet ? const Color(0xFF047857) : const Color(0xFF64748B),
+              fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCustomTextField({
     required TextEditingController controller,
     required String hintText,
@@ -219,6 +299,7 @@ class _RegisterViewState extends State<RegisterView> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    ValueChanged<String>? onChanged, // 🟢 为基础组件引出输入监测参数
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -232,6 +313,7 @@ class _RegisterViewState extends State<RegisterView> {
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
+            onChanged: onChanged, // 🟢 传导回外层进行监听
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: hintText,

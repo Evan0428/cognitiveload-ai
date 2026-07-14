@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/add_task_viewmodel.dart';
+import '../services/app_state.dart';
+import '../models/models.dart';
 
 class AddTaskView extends StatefulWidget {
   const AddTaskView({super.key});
@@ -49,6 +51,8 @@ class _AddTaskViewState extends State<AddTaskView> {
   Widget build(BuildContext context) {
     // 监听 ViewModel 状态变化
     final vm = context.watch<AddTaskViewModel>();
+    // 🟢 监听全局 AppState
+    final globalState = context.read<AppState>();
 
     String dateText = vm.selectedDate == null
         ? 'Select Date'
@@ -83,7 +87,7 @@ class _AddTaskViewState extends State<AddTaskView> {
                 controller: _nameController,
                 decoration: _inputDecoration('Enter task name'),
                 style: const TextStyle(fontWeight: FontWeight.w500),
-                onChanged: (val) => vm.updateTaskName(val), // 🟢 触发实时核心分数计算
+                onChanged: (val) => vm.updateTaskName(val), // 触发实时核心分数计算
                 validator: (v) => v == null || v.isEmpty ? 'Task name is required' : null,
               ),
               const SizedBox(height: 20),
@@ -158,7 +162,7 @@ class _AddTaskViewState extends State<AddTaskView> {
               ),
               const SizedBox(height: 28),
 
-              // 4. 认知负载得分展示区域 (完全贴合设计原稿的高还原组件)
+              // 4. 认知负载得分展示区域
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -168,7 +172,6 @@ class _AddTaskViewState extends State<AddTaskView> {
                     icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF4A3AFF)),
                     label: const Text('Manual Rating', style: TextStyle(fontSize: 13, color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
                     onPressed: () {
-                      // 演示微调：未来可以弹窗让用户回答 NASA-TLX 问卷，这里假设填写后修正为 90 分
                       vm.setManualScore(90);
                     },
                   )
@@ -179,7 +182,7 @@ class _AddTaskViewState extends State<AddTaskView> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2), // 还原设计图里浅浅的淡红警告色底色
+                  color: const Color(0xFFFFF1F2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -221,21 +224,55 @@ class _AddTaskViewState extends State<AddTaskView> {
                   ),
                   onPressed: vm.isSaving ? null : () async {
                     if (_formKey.currentState!.validate()) {
+                      // 确保用户选择了日期和时间
+                      if (vm.selectedDate == null || vm.startTime == null || vm.endTime == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please select Date and Times first!'), backgroundColor: Colors.orange),
+                        );
+                        return;
+                      }
+
+                      // 先保存到本地暂存变量，防止异步清空
+                      final taskName = _nameController.text.trim();
+                      final taskScore = vm.cognitiveLoadScore;
+                      final d = vm.selectedDate!;
+                      final st = vm.startTime!;
+                      final et = vm.endTime!;
+
+                      // 1. 发起原始的云端上传
                       bool isSuccess = await vm.submitTask();
+
                       if (isSuccess && mounted) {
+                        // 🟢 2. 数据联动闭环：同步注入本地核心状态管理，让主页圆圈分数产生化学反应 (FR 2.4)
+                        TaskIntensity mappedIntensity = TaskIntensity.medium;
+                        if (taskScore >= 80) {
+                          mappedIntensity = TaskIntensity.critical;
+                        } else if (taskScore >= 70) {
+                          mappedIntensity = TaskIntensity.high;
+                        } else if (taskScore <= 20) {
+                          mappedIntensity = TaskIntensity.low;
+                        }
+
+                        globalState.addEvent(ScheduleEvent(
+                          id: 'manual_${DateTime.now().microsecondsSinceEpoch}',
+                          title: taskName,
+                          start: DateTime(d.year, d.month, d.day, st.hour, st.minute),
+                          end: DateTime(d.year, d.month, d.day, et.hour, et.minute),
+                          intensity: mappedIntensity,
+                          source: 'manual',
+                        ));
+
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Task added and sync to Cloud successfully!'),
+                            content: const Text('Task integrated and dashboard score updated!'),
                             backgroundColor: const Color(0xFF00C853),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         );
-                        Navigator.pop(context); // 存好后退回上一页
-                      } else if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please select Date and Times first!'), backgroundColor: Colors.orange),
-                        );
+
+                        // 成功后连续退出，直接返回主 Dashboard 界面
+                        Navigator.pop(context);
                       }
                     }
                   },
@@ -248,7 +285,6 @@ class _AddTaskViewState extends State<AddTaskView> {
     );
   }
 
-  // 界面辅助小部件样式抽离，保持代码干净专业
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),

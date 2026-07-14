@@ -12,7 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # ---- Schedule Digitization Module (Lim Kah Jun) ----
-  google_mlkit_text_recognition: ^0.13.0   # OCR engine (real device)
+  google_mlkit_text_recognition: ^0.14.0 # OCR engine (real device)
   image_picker: ^1.1.2                      # Capture / pick timetable image
   image: ^4.2.0                             # Image preprocessing (contrast/denoise)
 
