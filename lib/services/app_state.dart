@@ -38,6 +38,12 @@ class AppState extends ChangeNotifier {
   LoadLevel? _lastNotifiedLevel;
   DateTime? _lastNotifiedAt;
 
+  /// Focus Lock (report §2.4.5 — JITAI): when on, non-critical alerts are
+  /// suppressed so the user is only interrupted when strain is dangerously
+  /// high (overload). Preserves deep-focus flow.
+  bool _focusLock = false;
+  bool get focusLock => _focusLock;
+
   List<ScheduleEvent> get events {
     final sorted = List<ScheduleEvent>.from(_events)
       ..sort((a, b) => a.start.compareTo(b.start));
@@ -61,6 +67,23 @@ class AppState extends ChangeNotifier {
     return PhysiologicalBaseline.fromSnapshots(prior);
   }
 
+  /// Chronological physiology history (up to 14 days) for trend charts.
+  List<PhysiologicalSnapshot> get history {
+    final sorted = List<PhysiologicalSnapshot>.from(_history)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return List.unmodifiable(sorted);
+  }
+
+  /// Readiness score per day, computed against the rolling baseline — the
+  /// series plotted on the Wellbeing trend chart.
+  List<MapEntry<DateTime, double>> get readinessTrend {
+    final b = baseline;
+    return history
+        .map((s) => MapEntry(
+            s.timestamp, engine.computeReadiness(s, baseline: b)))
+        .toList();
+  }
+
   final Map<String, int> _keywordScores = {
     'exam': 95,
     'test': 85,
@@ -79,10 +102,12 @@ class AppState extends ChangeNotifier {
     await notifier.init();
     _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((_) {
       syncTasksFromFirestore();
+      syncPhysiologyFromFirestore();
     });
 
     await _load();
     await syncTasksFromFirestore();
+    await syncPhysiologyFromFirestore();
     await refreshPhysiology();
     _recompute();
 
@@ -233,7 +258,13 @@ class AppState extends ChangeNotifier {
     _result = engine.analyse(todayEvents, _snapshot, baseline: baseline);
     final r = _result!;
 
-    if (r.level == LoadLevel.overload || r.level == LoadLevel.high) {
+    // Focus Lock suppresses non-critical (high) alerts — only a dangerously
+    // high overload breaks through, so deep-focus flow isn't interrupted.
+    final notifiable = _focusLock
+        ? r.level == LoadLevel.overload
+        : (r.level == LoadLevel.overload || r.level == LoadLevel.high);
+
+    if (notifiable) {
       // Throttle: notify only when the level escalates, or after a 30-minute
       // cooldown — otherwise every task edit / periodic refresh would buzz.
       final escalated = _lastNotifiedLevel == null ||
@@ -253,6 +284,14 @@ class AppState extends ChangeNotifier {
       // Back in the safe zone: allow the next escalation to notify again.
       _lastNotifiedLevel = null;
     }
+  }
+
+  /// Toggle Focus Lock and persist the choice.
+  Future<void> toggleFocusLock() async {
+    _focusLock = !_focusLock;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('focusLock', _focusLock);
   }
 
   ScheduleEvent _taskDocToScheduleEvent(
@@ -366,7 +405,63 @@ class AppState extends ChangeNotifier {
     _history.removeWhere((h) => h.timestamp.isBefore(cutoff));
     await prefs.setString('snapshotHistory',
         jsonEncode(_history.map((h) => h.toJson()).toList()));
+
+    // Cloud persistence (report Ch.4 data design): one document per day under
+    // users/{uid}/physiology, with the computed readiness. Local cache above
+    // stays the offline source of truth.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        final readiness = engine.computeReadiness(s, baseline: baseline);
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('physiology')
+            .doc(_dayKey(s.timestamp))
+            .set({
+          ...s.toJson(),
+          'readiness': readiness,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Physiology cloud save failed (kept local): $e');
+      }
+    }
   }
+
+  /// Pull up to 14 days of physiology from Firestore so the baseline and trend
+  /// survive across devices / reinstalls. Cloud entries fill gaps in the local
+  /// history; failures are non-fatal (offline cache remains).
+  Future<void> syncPhysiologyFromFirestore() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('physiology')
+          .get()
+          .timeout(const Duration(seconds: 5));
+      final cutoff = DateTime.now().subtract(const Duration(days: 14));
+      for (final doc in snap.docs) {
+        final s = PhysiologicalSnapshot.fromJson(doc.data());
+        if (s.timestamp.isBefore(cutoff)) continue;
+        final exists =
+            _history.any((h) => _sameDay(h.timestamp, s.timestamp));
+        if (!exists) _history.add(s);
+      }
+      _recompute();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Physiology cloud sync unavailable, using local cache: $e');
+    }
+  }
+
+  String _dayKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -399,5 +494,6 @@ class AppState extends ChangeNotifier {
         ..addAll((jsonDecode(hist) as List)
             .map((j) => PhysiologicalSnapshot.fromJson(j)));
     }
+    _focusLock = prefs.getBool('focusLock') ?? false;
   }
 }

@@ -345,7 +345,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: isSelected ? Colors.transparent : Colors.transparent,
-              border: isSelected ? Border.all(color: const Color(0xFF6723F5), width: 1.5) : null,
+              border: isSelected ? Border.all(color: const Color(0xFF8B5CF6), width: 1.5) : null,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -356,7 +356,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? const Color(0xFF6723F5) : const Color(0xFF334155),
+                    color: isSelected ? const Color(0xFF8B5CF6) : const Color(0xFF334155),
                   ),
                 ),
                 if (hasTasks)

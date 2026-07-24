@@ -110,7 +110,7 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A3AFF),
+              backgroundColor: const Color(0xFF6366F1),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               elevation: 0,
             ),
@@ -163,7 +163,7 @@ class _SettingsViewState extends State<SettingsView> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Profile picture synced to cloud!'),
-              backgroundColor: const Color(0xFF4A3AFF),
+              backgroundColor: const Color(0xFF6366F1),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               duration: const Duration(seconds: 2),
@@ -186,7 +186,7 @@ class _SettingsViewState extends State<SettingsView> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF4A3AFF)),
+              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF6366F1)),
               title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w500)),
               onTap: () {
                 Navigator.pop(context);
@@ -194,7 +194,7 @@ class _SettingsViewState extends State<SettingsView> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF4A3AFF)),
+              leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF6366F1)),
               title: const Text('Take a Photo', style: TextStyle(fontWeight: FontWeight.w500)),
               onTap: () {
                 Navigator.pop(context);
@@ -288,7 +288,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (_isLoadingData) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF4A3AFF))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
       );
     }
 
@@ -346,7 +346,7 @@ class _SettingsViewState extends State<SettingsView> {
                               onTap: () => _showImageSourceBottomSheet(context),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
-                                decoration: const BoxDecoration(color: Color(0xFF4A3AFF), shape: BoxShape.circle),
+                                decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle),
                                 child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
                               ),
                             ),
@@ -391,7 +391,7 @@ class _SettingsViewState extends State<SettingsView> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Daily Burnout Threshold', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-                        Text('${_burnoutThreshold.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4A3AFF))),
+                        Text('${_burnoutThreshold.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
                       ],
                     ),
                     Slider(
@@ -399,7 +399,7 @@ class _SettingsViewState extends State<SettingsView> {
                       min: 0,
                       max: 100,
                       divisions: 100,
-                      activeColor: const Color(0xFF4A3AFF),
+                      activeColor: const Color(0xFF6366F1),
                       inactiveColor: const Color(0xFFE2E8F0),
                       onChanged: (val) {
                         setState(() => _burnoutThreshold = val);
@@ -540,7 +540,7 @@ class _SettingsViewState extends State<SettingsView> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: const Color(0xFF4A3AFF), size: 22),
+          child: Icon(icon, color: const Color(0xFF6366F1), size: 22),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -562,7 +562,7 @@ class _SettingsViewState extends State<SettingsView> {
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
       value: value,
       activeColor: Colors.white,
-      activeTrackColor: const Color(0xFF4A3AFF),
+      activeTrackColor: const Color(0xFF6366F1),
       inactiveTrackColor: const Color(0xFFE2E8F0),
       contentPadding: EdgeInsets.zero,
       onChanged: onChanged,

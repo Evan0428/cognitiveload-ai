@@ -97,7 +97,7 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                 width: 80,
                 height: 80,
                 decoration: const BoxDecoration(color: Color(0xFFEAEAFF), shape: BoxShape.circle),
-                child: const Icon(Icons.add_rounded, size: 40, color: Color(0xFF4A3AFF)),
+                child: const Icon(Icons.add_rounded, size: 40, color: Color(0xFF6366F1)),
               ),
             ),
             const SizedBox(height: 24),
@@ -110,7 +110,7 @@ class _TaskManagerViewState extends State<TaskManagerView> {
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A3AFF),
+                  backgroundColor: const Color(0xFF6366F1),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
                 ),
@@ -274,7 +274,7 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                         TextButton(
                           onPressed: () {},
                           style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                          child: const Text('⚡ Manual Rating', style: TextStyle(fontSize: 12, color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+                          child: const Text('⚡ Manual Rating', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                         )
                       ],
                     ),
@@ -293,7 +293,7 @@ class _TaskManagerViewState extends State<TaskManagerView> {
 
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A3AFF),
+                  backgroundColor: const Color(0xFF6366F1),
                   minimumSize: const Size(double.infinity, 54),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,

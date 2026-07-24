@@ -28,7 +28,7 @@ class ScanTimetableView extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF4A3AFF)),
+                  CircularProgressIndicator(color: Color(0xFF6366F1)),
                   SizedBox(height: 16),
                   Text('Utilizing Google ML Kit to extract text...', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500))
                 ],
@@ -47,7 +47,7 @@ class ScanTimetableView extends StatelessWidget {
                       width: 88,
                       height: 88,
                       decoration: const BoxDecoration(color: Color(0xFFEAEAFF), shape: BoxShape.circle),
-                      child: const Icon(Icons.document_scanner_outlined, size: 38, color: Color(0xFF4A3AFF)),
+                      child: const Icon(Icons.document_scanner_outlined, size: 38, color: Color(0xFF6366F1)),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -114,7 +114,7 @@ class ScanTimetableView extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-        decoration: BoxDecoration(color: const Color(0xFF4A3AFF), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color: const Color(0xFF6366F1), borderRadius: BorderRadius.circular(16)),
         child: Row(
           children: [
             Icon(icon, color: Colors.white, size: 26),

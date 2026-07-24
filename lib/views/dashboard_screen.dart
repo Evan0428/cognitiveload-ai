@@ -66,7 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.logout, color: Color(0xFF4A3AFF)),
+            Icon(Icons.logout, color: Color(0xFF6366F1)),
             SizedBox(width: 8),
             Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
@@ -121,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (r == null) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF4A3AFF))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
       );
     }
 
@@ -143,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, -4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, -4)),
           ],
         ),
         child: BottomNavigationBar(
@@ -155,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF6723F5),
+          selectedItemColor: const Color(0xFF8B5CF6),
           unselectedItemColor: Colors.grey.shade400,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
@@ -188,7 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF007AFF), Color(0xFF6723F5)],
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
             ),
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(32),
@@ -247,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: _buildShortcutButton(
                         icon: Icons.qr_code_scanner_rounded,
                         title: 'Scan Timetable',
-                        iconColor: const Color(0xFF4A3AFF),
+                        iconColor: const Color(0xFF6366F1),
                         onTap: () {
                           Navigator.push(
                             context,
@@ -261,7 +261,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: _buildShortcutButton(
                         icon: Icons.playlist_add_rounded,
                         title: 'Add Task',
-                        iconColor: const Color(0xFF4A3AFF),
+                        iconColor: const Color(0xFF6366F1),
                         onTap: () {
                           Navigator.push(
                             context,
@@ -294,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -327,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            decoration: BoxDecoration(color: mainColor.withOpacity(0.12), borderRadius: BorderRadius.circular(100)),
+            decoration: BoxDecoration(color: mainColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(100)),
             child: Text(result.level == LoadLevel.safe ? "Low Load" : result.level.label, style: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: 14)),
           ),
           const SizedBox(height: 14),
@@ -355,13 +355,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
               child: Icon(Icons.favorite_rounded, color: color, size: 24),
             ),
             const SizedBox(width: 14),
@@ -392,7 +392,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4A3AFF),
+            backgroundColor: const Color(0xFF6366F1),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 0,
@@ -424,7 +424,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("Today's Schedule", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-              TextContainer(text: '${tasks.length} Tasks', color: const Color(0xFF4A3AFF)),
+              TextContainer(text: '${tasks.length} Tasks', color: const Color(0xFF6366F1)),
             ],
           ),
         ),
@@ -452,7 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: 4,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4A3AFF),
+                        color: const Color(0xFF6366F1),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -491,14 +491,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(height: 16),
@@ -519,7 +519,7 @@ class TextContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
       child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }

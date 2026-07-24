@@ -254,7 +254,7 @@ class AnalyticsView extends StatelessWidget {
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(top: 6.0),
-                          child: Icon(Icons.circle, size: 6, color: Color(0xFF4A3AFF)),
+                          child: Icon(Icons.circle, size: 6, color: Color(0xFF6366F1)),
                         ),
                         const SizedBox(width: 10),
                         Expanded(

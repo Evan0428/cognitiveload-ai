@@ -39,8 +39,8 @@ class _ReviewEditViewState extends State<ReviewEditView> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         leading: TextButton.icon(
-          icon: const Icon(Icons.arrow_back_ios, size: 14, color: Color(0xFF4A3AFF)),
-          label: const Text('Retake', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.arrow_back_ios, size: 14, color: Color(0xFF6366F1)),
+          label: const Text('Retake', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
           onPressed: () => Navigator.pop(context),
         ),
         leadingWidth: 100,
@@ -190,7 +190,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
               height: 54,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A3AFF),
+                  backgroundColor: const Color(0xFF6366F1),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
@@ -233,7 +233,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
       suffixIcon: suffixIcon != null ? Icon(suffixIcon, size: 16, color: Colors.grey) : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF4A3AFF))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF6366F1))),
     );
   }
 }

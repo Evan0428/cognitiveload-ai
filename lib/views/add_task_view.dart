@@ -169,8 +169,8 @@ class _AddTaskViewState extends State<AddTaskView> {
                   const Text('Cognitive Load Score', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
                   TextButton.icon(
                     style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                    icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF4A3AFF)),
-                    label: const Text('Manual Rating', style: TextStyle(fontSize: 13, color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF6366F1)),
+                    label: const Text('Manual Rating', style: TextStyle(fontSize: 13, color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                     onPressed: () {
                       vm.setManualScore(90);
                     },
@@ -211,7 +211,7 @@ class _AddTaskViewState extends State<AddTaskView> {
                 height: 52,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3AFF),
+                    backgroundColor: const Color(0xFF6366F1),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
@@ -300,7 +300,7 @@ class _AddTaskViewState extends State<AddTaskView> {
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4A3AFF), width: 1.5)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
       focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
     );

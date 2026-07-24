@@ -57,7 +57,7 @@ class _LoginViewState extends State<LoginView> {
                 // 2. 主标题与副标题
                 const Text(
                   'CognitiveLoadAI',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF6723F5)),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF8B5CF6)),
                 ),
                 const Text(
                   'Smart Cognitive Load Management',
@@ -187,7 +187,7 @@ class _LoginViewState extends State<LoginView> {
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4A3AFF),
+                                backgroundColor: const Color(0xFF6366F1),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               onPressed: authViewModel.isLoading
@@ -221,7 +221,7 @@ class _LoginViewState extends State<LoginView> {
                         ),
                       );
                     },
-                    child: const Text('Forgot password?', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.w600)),
+                    child: const Text('Forgot password?', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -232,7 +232,7 @@ class _LoginViewState extends State<LoginView> {
                   height: 56,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A3AFF),
+                      backgroundColor: const Color(0xFF6366F1),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
@@ -264,7 +264,7 @@ class _LoginViewState extends State<LoginView> {
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(context),
-                                    child: const Text('OK', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+                                    child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                                   )
                                 ],
                               ),
@@ -310,7 +310,7 @@ class _LoginViewState extends State<LoginView> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: const Text('OK', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+                                  child: const Text('OK', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                                 )
                               ],
                             ),
@@ -331,7 +331,7 @@ class _LoginViewState extends State<LoginView> {
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterView()));
                       },
-                      child: const Text('Sign Up', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
+                      child: const Text('Sign Up', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

@@ -12,7 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # ---- Schedule Digitization Module (Lim Kah Jun) ----
-  google_mlkit_text_recognition: ^0.14.0 # OCR engine (real device)
+  google_mlkit_text_recognition: ^0.15.0 # OCR engine; 0.15 aligns nanopb with Firebase (avoids CocoaPods conflict)
   image_picker: ^1.1.2                      # Capture / pick timetable image
   image: ^4.2.0                             # Image preprocessing (contrast/denoise)
 
@@ -36,8 +36,23 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1   # Generates platform app icons from a source PNG
+
+# App icon generation (run: dart run flutter_launcher_icons)
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "assets/icon/adaptive_bg.png"
+  adaptive_icon_foreground: "assets/icon/adaptive_fg.png"
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/CognitiveLoadAI-logo.png
+    - assets/icon/app_icon.png

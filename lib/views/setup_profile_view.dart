@@ -19,7 +19,7 @@ class _SetupProfileViewState extends State<SetupProfileView> {
     return Scaffold(
       backgroundColor: const Color(0xFFEDF1F9), // 保持系统标志性浅蓝灰色背景
       body: _isSaving
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A3AFF)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
           : SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
@@ -97,16 +97,16 @@ class _SetupProfileViewState extends State<SetupProfileView> {
                         ),
                         Text(
                           '${_burnoutThreshold.toInt()}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Color(0xFF4A3AFF)),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Color(0xFF6366F1)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: const Color(0xFF007AFF), // 还原 Mockup 中深蓝色的 Slider 轴
+                        activeTrackColor: const Color(0xFF6366F1), // 还原 Mockup 中深蓝色的 Slider 轴
                         inactiveTrackColor: const Color(0xFFE2E8F0),
-                        thumbColor: const Color(0xFF007AFF),
+                        thumbColor: const Color(0xFF6366F1),
                         trackHeight: 6,
                       ),
                       child: Slider(
@@ -158,7 +158,7 @@ class _SetupProfileViewState extends State<SetupProfileView> {
                 height: 56,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3AFF),
+                    backgroundColor: const Color(0xFF6366F1),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
@@ -194,7 +194,7 @@ class _SetupProfileViewState extends State<SetupProfileView> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4A3AFF) : const Color(0xFFE2E8F0),
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -202,11 +202,11 @@ class _SetupProfileViewState extends State<SetupProfileView> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: isSelected ? const Color(0xFF4A3AFF) : Colors.grey),
+            Icon(icon, size: 32, color: isSelected ? const Color(0xFF6366F1) : Colors.grey),
             const SizedBox(height: 12),
             Text(
               title,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSelected ? const Color(0xFF4A3AFF) : const Color(0xFF1E293B)),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF1E293B)),
             ),
             const SizedBox(height: 6),
             Text(
@@ -225,7 +225,7 @@ class _SetupProfileViewState extends State<SetupProfileView> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('• ', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text('• ', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold, fontSize: 16)),
         Expanded(
           child: Text(
             text,
