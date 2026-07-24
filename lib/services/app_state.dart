@@ -26,6 +26,18 @@ class AppState extends ChangeNotifier {
   bool _loading = false;
   StreamSubscription<User?>? _authSubscription;
 
+  /// One snapshot per day for up to 14 days — feeds the rolling baseline
+  /// (Chua's module, report section 2.4.4).
+  final List<PhysiologicalSnapshot> _history = [];
+
+  /// Real-time strain tracking: periodic physiology refresh.
+  Timer? _strainTimer;
+  static const Duration strainInterval = Duration(minutes: 15);
+
+  // Notification throttling so real alerts don't fire on every recompute.
+  LoadLevel? _lastNotifiedLevel;
+  DateTime? _lastNotifiedAt;
+
   List<ScheduleEvent> get events {
     final sorted = List<ScheduleEvent>.from(_events)
       ..sort((a, b) => a.start.compareTo(b.start));
@@ -35,6 +47,19 @@ class AppState extends ChangeNotifier {
   PhysiologicalSnapshot? get snapshot => _snapshot;
   CognitiveLoadResult? get result => _result;
   bool get loading => _loading;
+
+  /// Rolling personal baseline from prior days' snapshots (today excluded so a
+  /// bad morning doesn't drag its own reference down).
+  PhysiologicalBaseline? get baseline {
+    final now = DateTime.now();
+    final prior = _history
+        .where((s) => !(s.timestamp.year == now.year &&
+            s.timestamp.month == now.month &&
+            s.timestamp.day == now.day))
+        .toList();
+    if (prior.isEmpty) return null;
+    return PhysiologicalBaseline.fromSnapshots(prior);
+  }
 
   final Map<String, int> _keywordScores = {
     'exam': 95,
@@ -61,6 +86,11 @@ class AppState extends ChangeNotifier {
     await refreshPhysiology();
     _recompute();
 
+    // Real-time workload strain tracking: re-sample physiology periodically so
+    // HR spikes during a work session are caught, not just on manual sync.
+    _strainTimer ??=
+        Timer.periodic(strainInterval, (_) => refreshPhysiology());
+
     _loading = false;
     notifyListeners();
   }
@@ -68,6 +98,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _strainTimer?.cancel();
     super.dispose();
   }
 
@@ -197,24 +228,30 @@ class AppState extends ChangeNotifier {
             event.start.day == today.day)
         .toList();
 
-    if (todayEvents.isEmpty) {
-      _result = CognitiveLoadResult(
-        combinedLoad: 0.0,
-        workloadScore: 0.0,
-        readinessScore: 0.0,
-        level: LoadLevel.safe,
-        alerts: [],
-      );
-      return;
-    }
-
-    _result = engine.analyse(todayEvents, _snapshot);
+    // Always analyse — the engine still computes physiological readiness with
+    // no tasks, so the Wellbeing screen shows a live score on a rest day.
+    _result = engine.analyse(todayEvents, _snapshot, baseline: baseline);
     final r = _result!;
+
     if (r.level == LoadLevel.overload || r.level == LoadLevel.high) {
-      notifier.show(
-        'CognitiveLoad AI - ${r.level.label}',
-        r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
-      );
+      // Throttle: notify only when the level escalates, or after a 30-minute
+      // cooldown — otherwise every task edit / periodic refresh would buzz.
+      final escalated = _lastNotifiedLevel == null ||
+          r.level.index > _lastNotifiedLevel!.index;
+      final cooledDown = _lastNotifiedAt == null ||
+          DateTime.now().difference(_lastNotifiedAt!) >
+              const Duration(minutes: 30);
+      if (escalated || cooledDown) {
+        _lastNotifiedLevel = r.level;
+        _lastNotifiedAt = DateTime.now();
+        notifier.show(
+          'CognitiveLoad AI - ${r.level.label}',
+          r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
+        );
+      }
+    } else {
+      // Back in the safe zone: allow the next escalation to notify again.
+      _lastNotifiedLevel = null;
     }
   }
 
@@ -316,6 +353,19 @@ class AppState extends ChangeNotifier {
     if (_snapshot == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('snapshot', jsonEncode(_snapshot!.toJson()));
+
+    // Upsert today's entry into the rolling history (one per day, latest wins)
+    // and prune anything older than 14 days.
+    final s = _snapshot!;
+    _history.removeWhere((h) =>
+        h.timestamp.year == s.timestamp.year &&
+        h.timestamp.month == s.timestamp.month &&
+        h.timestamp.day == s.timestamp.day);
+    _history.add(s);
+    final cutoff = DateTime.now().subtract(const Duration(days: 14));
+    _history.removeWhere((h) => h.timestamp.isBefore(cutoff));
+    await prefs.setString('snapshotHistory',
+        jsonEncode(_history.map((h) => h.toJson()).toList()));
   }
 
   Future<void> _load() async {
@@ -341,6 +391,13 @@ class AppState extends ChangeNotifier {
     final snap = prefs.getString('snapshot');
     if (snap != null) {
       _snapshot = PhysiologicalSnapshot.fromJson(jsonDecode(snap));
+    }
+    final hist = prefs.getString('snapshotHistory');
+    if (hist != null) {
+      _history
+        ..clear()
+        ..addAll((jsonDecode(hist) as List)
+            .map((j) => PhysiologicalSnapshot.fromJson(j)));
     }
   }
 }

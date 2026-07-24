@@ -11,7 +11,8 @@ import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
 import 'scan_timetable_view.dart';
-import 'analytics_view.dart'; 
+import 'analytics_view.dart';
+import 'wellbeing_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -126,8 +127,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final List<Widget> _tabs = [
       _buildHomeContent(r, state),
-      const ScheduleScreen(), 
-      const AnalyticsView(), 
+      const ScheduleScreen(),
+      const AnalyticsView(),
+      const WellbeingScreen(), // Chua — HealthKit / Apple Watch readiness
       const SettingsView(),
     ];
 
@@ -161,6 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Schedule'),
             BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), activeIcon: Icon(Icons.bar_chart), label: 'Analytics'),
+            BottomNavigationBarItem(icon: Icon(Icons.favorite_border), activeIcon: Icon(Icons.favorite), label: 'Wellbeing'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
           ],
         ),
@@ -226,6 +229,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 24),
 
                 _buildGaugeCard(r),
+                const SizedBox(height: 16),
+
+                // ❤️ Chua — physiological readiness; taps through to Wellbeing.
+                _buildReadinessCard(r),
                 const SizedBox(height: 32),
 
                 todayTasks.isEmpty
@@ -326,6 +333,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 14),
           const Text("Today's Cognitive Load", style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500, fontSize: 14)),
         ],
+      ),
+    );
+  }
+
+  // ❤️ Physiological readiness mini-card (Chua's module). Tapping opens the
+  // Wellbeing tab with the full HR / HRV / sleep / steps breakdown.
+  Widget _buildReadinessCard(CognitiveLoadResult r) {
+    final readiness = r.readinessScore;
+    final color = readiness >= 70
+        ? const Color(0xFF00C853)
+        : readiness >= 45
+            ? const Color(0xFFFF9800)
+            : const Color(0xFFF44336);
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = 3),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.favorite_rounded, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Physiological Readiness', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  SizedBox(height: 2),
+                  Text('From Apple Watch / HealthKit', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+            ),
+            Text('${readiness.toStringAsFixed(0)}%', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+          ],
+        ),
       ),
     );
   }

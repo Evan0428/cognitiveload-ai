@@ -58,13 +58,28 @@ class CognitiveLoadEngine {
   /// Physiological Readiness (0-100). Higher = more biologically prepared.
   /// Correlates recovery (sleep) with active stress signals (HR, HRV) —
   /// Chua's cognitive-capacity model.
-  double computeReadiness(PhysiologicalSnapshot p) {
-    // Sleep: 8h ideal. Scaled 0-1.
-    final sleepScore = (p.sleepHours / 8.0).clamp(0.0, 1.0);
-    // HRV: higher is better recovery. ~80ms treated as strong.
-    final hrvScore = (p.hrv / 80.0).clamp(0.0, 1.0);
-    // Resting HR: lower is better. 60bpm strong, 100bpm strained.
-    final hrScore = (1 - ((p.heartRate - 60) / 40)).clamp(0.0, 1.0);
+  ///
+  /// When a reliable [baseline] exists (>= 3 days of history), the targets are
+  /// dynamic intra-individual thresholds: the midpoint between the population
+  /// norm and the user's own 14-day rolling average (report section 2.4.4).
+  /// Without history it falls back to the population norms alone.
+  double computeReadiness(PhysiologicalSnapshot p,
+      {PhysiologicalBaseline? baseline}) {
+    final personal = baseline != null && baseline.isReliable;
+
+    // Population norms: 8h sleep, 80ms HRV, 60bpm resting HR.
+    final sleepTarget =
+        personal ? ((8.0 + baseline.avgSleepHours) / 2).clamp(6.0, 9.0) : 8.0;
+    final hrvTarget =
+        personal ? ((80.0 + baseline.avgHrv) / 2).clamp(40.0, 100.0) : 80.0;
+    final hrAnchor = personal
+        ? ((60.0 + baseline.avgHeartRate) / 2).clamp(50.0, 80.0)
+        : 60.0;
+
+    final sleepScore = (p.sleepHours / sleepTarget).clamp(0.0, 1.0);
+    final hrvScore = (p.hrv / hrvTarget).clamp(0.0, 1.0);
+    // Resting HR: at the anchor = strong; anchor + 40bpm = fully strained.
+    final hrScore = (1 - ((p.heartRate - hrAnchor) / 40)).clamp(0.0, 1.0);
     // Activity: some movement is good; cap the benefit.
     final stepScore = (p.steps / 8000.0).clamp(0.0, 1.0);
 
@@ -77,29 +92,29 @@ class CognitiveLoadEngine {
   }
 
   /// Fuse schedule demand and physiological readiness into one 0-100 signal.
-  /// High workload + low readiness = high combined cognitive load.
+  /// The same schedule feels heavier when the user is biologically depleted:
+  /// combined load = normalised workload scaled by a capacity factor derived
+  /// from physiological readiness ("energy management", not just time
+  /// management — Chua's Objective 2). Readiness is always reported so the
+  /// Wellbeing screen shows it even on a task-free day.
   CognitiveLoadResult analyse(
     List<ScheduleEvent> events,
-    PhysiologicalSnapshot? snapshot,
-  ) {
-    if (events.isEmpty) {
-      return CognitiveLoadResult(
-        workloadScore: 0.0,
-        readinessScore: 0.0,
-        combinedLoad: 0.0,
-        level: LoadLevel.safe,
-        alerts: [],
-      );
-    }
+    PhysiologicalSnapshot? snapshot, {
+    PhysiologicalBaseline? baseline,
+  }) {
+    final readiness = snapshot != null
+        ? computeReadiness(snapshot, baseline: baseline)
+        : 100.0;
 
     final workload = computeWorkloadScore(events);
-    const readiness = 100.0;
 
     // Normalise workload to 0-100 (cap raw score at 40 for a full bar).
     final workloadNorm = (workload / 40.0 * 100).clamp(0.0, 100.0);
 
-    // Health/device readiness is intentionally ignored until that module is integrated.
-    final combined = workloadNorm;
+    // Capacity factor: 1.0 when fully recovered (readiness 100), up to 1.6 when
+    // fully depleted (readiness 0). No tasks -> workloadNorm 0 -> combined 0.
+    final capacityFactor = 1 + (1 - readiness / 100) * 0.6;
+    final combined = (workloadNorm * capacityFactor).clamp(0.0, 100.0);
 
     final level = switch (combined) {
       < 35 => LoadLevel.safe,
@@ -108,7 +123,8 @@ class CognitiveLoadEngine {
       _ => LoadLevel.overload,
     };
 
-    final alerts = _buildAlerts(events, workload, readiness, snapshot, level);
+    final alerts =
+        _buildAlerts(events, workload, readiness, snapshot, baseline, level);
 
     return CognitiveLoadResult(
       workloadScore: workload,
@@ -124,6 +140,7 @@ class CognitiveLoadEngine {
     double workload,
     double readiness,
     PhysiologicalSnapshot? p,
+    PhysiologicalBaseline? baseline,
     LoadLevel level,
   ) {
     final alerts = <String>[];
@@ -148,6 +165,13 @@ class CognitiveLoadEngine {
       if (p.hrv < 35) {
         alerts.add(
             'Elevated stress signal: HRV is low (${p.hrv.toStringAsFixed(0)} ms). Your body shows reduced readiness.');
+      }
+      // Real-time strain: acute HR spike vs the user's own rolling baseline.
+      if (baseline != null &&
+          baseline.isReliable &&
+          p.heartRate > baseline.avgHeartRate * 1.25) {
+        alerts.add(
+            'Heart-rate spike: ${p.heartRate.toStringAsFixed(0)} bpm vs your ${baseline.days}-day average of ${baseline.avgHeartRate.toStringAsFixed(0)} bpm. Acute strain detected — take a short recovery break.');
       }
     }
 

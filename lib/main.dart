@@ -54,7 +54,7 @@ class AuthenticationWrapper extends StatelessWidget {
         }
         if (snapshot.hasData) {
           // 🟢 使用 DashboardScreen 作为唯一的导航外壳
-          // 它已经包含了：Home, Schedule, Analytics, Settings
+          // 它已经包含了：Home, Schedule, Analytics, Wellbeing, Settings
           return const DashboardScreen();
         }
         return const LoginView();
