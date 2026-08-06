@@ -17,6 +17,7 @@ class AvatarCreatorView extends StatefulWidget {
 class _AvatarCreatorViewState extends State<AvatarCreatorView> {
   final AvatarService _service = AvatarService();
   bool _scanning = false;
+  int _rebuildKey = 0; // bumped after a scan to refresh the customizer
 
   @override
   void dispose() {
@@ -36,7 +37,11 @@ class _AvatarCreatorViewState extends State<AvatarCreatorView> {
     setState(() => _scanning = true);
     final idx = await _service.seedFromSelfie(File(picked.path));
     if (!mounted) return;
-    setState(() => _scanning = false);
+    // Bump the key so the customizer rebuilds and shows the seeded avatar.
+    setState(() {
+      _scanning = false;
+      if (idx != null) _rebuildKey++;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -120,9 +125,27 @@ class _AvatarCreatorViewState extends State<AvatarCreatorView> {
               ],
             ),
           ),
+          // Big standing preview — updates live as you scan / customise.
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                AppTheme.indigo.withValues(alpha: 0.18),
+                AppTheme.indigo.withValues(alpha: 0.0),
+              ]),
+            ),
+            child: FluttermojiCircleAvatar(
+              key: ValueKey('preview_$_rebuildKey'),
+              radius: 52,
+              backgroundColor: AppTheme.surfaceAlt,
+            ),
+          ),
           // fluttermoji customizer (includes its own live preview + selectors)
           Expanded(
             child: FluttermojiCustomizer(
+              key: ValueKey('customizer_$_rebuildKey'),
               scaffoldWidth: MediaQuery.of(context).size.width,
               autosave: true,
               theme: FluttermojiThemeData(

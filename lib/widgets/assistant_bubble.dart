@@ -33,6 +33,13 @@ class _AssistantBubbleState extends State<AssistantBubble> {
     final prev = _lastLevel;
     if (prev == r.level) return;
 
+    // First appearance: the open-app dialog does the greeting, so just record
+    // the level without speaking (avoids double audio).
+    if (prev == null) {
+      _lastLevel = r.level;
+      return;
+    }
+
     final escalated =
         (r.level == LoadLevel.high || r.level == LoadLevel.overload) &&
             (prev == null || r.level.index > prev.index);

@@ -10,6 +10,7 @@ import '../models/models.dart';
 import 'package:fluttermoji/fluttermoji.dart';
 import '../services/avatar_service.dart';
 import '../widgets/assistant_bubble.dart';
+import '../widgets/assistant_dialog.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
@@ -28,6 +29,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   String _realName = '...';
+  bool _greeted = false; // assistant auto-greets once per app open
 
   @override
   void initState() {
@@ -129,6 +131,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Color(0xFFF8FAFC),
         body: Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
       );
+    }
+
+    // 🗣️ On app open, the avatar assistant pops out and speaks its advice.
+    if (!_greeted) {
+      _greeted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showAssistantDialog(context,
+              result: r, name: state.userProfile?.name);
+        }
+      });
     }
 
     final List<Widget> _tabs = [

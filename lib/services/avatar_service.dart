@@ -67,10 +67,12 @@ class AvatarService {
 
   /// Set the avatar's skin swatch and persist (local + cloud).
   Future<void> _applySkin(int index) async {
-    final options = await _controller.getFluttermojiOptions();
+    final c = _controller;
+    final options = await c.getFluttermojiOptions();
     options['skinColor'] = index;
-    _controller.selectedOptions = options;
-    await _controller.setFluttermoji(); // regenerates SVG + saves locally
+    c.selectedOptions = Map<String?, dynamic>.from(options);
+    await c.setFluttermoji(); // persists + sets the reactive fluttermoji.value
+    c.updatePreview(); // force-regenerate the SVG so the preview refreshes
     await saveToCloud();
   }
 
