@@ -1,14 +1,16 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttermoji/fluttermoji.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/avatar_service.dart';
 import '../theme/app_theme.dart';
 
 /// Create / edit the user's virtual avatar (Chua Yi Zhe).
-/// A selfie seeds skin tone via on-device ML Kit; the user refines the rest.
+///
+/// Shown as a required step during onboarding ([onboarding] = true) and again
+/// from Settings for edits. The user builds a cartoon avatar with the
+/// fluttermoji customizer; the choice is saved locally + to Firestore.
 class AvatarCreatorView extends StatefulWidget {
-  const AvatarCreatorView({super.key});
+  final bool onboarding;
+  const AvatarCreatorView({super.key, this.onboarding = false});
 
   @override
   State<AvatarCreatorView> createState() => _AvatarCreatorViewState();
@@ -16,118 +18,59 @@ class AvatarCreatorView extends StatefulWidget {
 
 class _AvatarCreatorViewState extends State<AvatarCreatorView> {
   final AvatarService _service = AvatarService();
-  bool _scanning = false;
-  int _rebuildKey = 0; // bumped after a scan to refresh the customizer
-
-  @override
-  void dispose() {
-    _service.dispose();
-    super.dispose();
-  }
-
-  Future<void> _scanFace() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      preferredCameraDevice: CameraDevice.front,
-      maxWidth: 600,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
-
-    setState(() => _scanning = true);
-    final ok = await _service.seedFromSelfie(File(picked.path));
-    if (!mounted) return;
-    // Bump the key so the customizer rebuilds and shows the seeded avatar.
-    setState(() {
-      _scanning = false;
-      if (ok) _rebuildKey++;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok
-            ? 'Face scanned — skin, hair & expression matched. Tweak the rest!'
-            : "Couldn't read the photo. Try again in better lighting, or build manually."),
-        backgroundColor: ok ? AppTheme.success : AppTheme.warning,
-      ),
-    );
-  }
+  bool _saving = false;
 
   Future<void> _save() async {
-    await _service.saveToCloud();
+    setState(() => _saving = true);
+    await _service.saveToCloud(); // customizer autosaves locally; mirror to cloud
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Avatar saved!'), backgroundColor: AppTheme.success),
-    );
-    Navigator.pop(context);
+    setState(() => _saving = false);
+
+    if (widget.onboarding) {
+      // Reveal the dashboard underneath (onboarding was pushed on top of it).
+      Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Avatar saved!'),
+            backgroundColor: AppTheme.success),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // No back button during onboarding — creating an avatar is required.
       appBar: AppBar(
-        title: const Text('My Avatar'),
+        automaticallyImplyLeading: !widget.onboarding,
+        title: Text(widget.onboarding ? 'Create Your Avatar' : 'My Avatar'),
         actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('Save',
-                style: TextStyle(
-                    color: AppTheme.indigo, fontWeight: FontWeight.bold)),
-          ),
+          if (!widget.onboarding)
+            TextButton(
+              onPressed: _saving ? null : _save,
+              child: const Text('Save',
+                  style: TextStyle(
+                      color: AppTheme.indigo, fontWeight: FontWeight.bold)),
+            ),
         ],
       ),
       body: Column(
         children: [
-          // Scan-to-seed banner
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.brandGradient,
-              borderRadius: BorderRadius.circular(18),
+          if (widget.onboarding)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, 4),
+              child: Text(
+                'Meet your assistant! Design a character that feels like you — '
+                'it will greet you and share workload advice.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.inkSoft, fontSize: 13),
+              ),
             ),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Look like you',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16)),
-                      SizedBox(height: 4),
-                      Text(
-                          'Scan your face and we\'ll match your skin tone — then customise the rest.',
-                          style:
-                              TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _scanning ? null : _scanFace,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.indigo,
-                  ),
-                  icon: _scanning
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppTheme.indigo))
-                      : const Icon(Icons.face_retouching_natural, size: 18),
-                  label: Text(_scanning ? 'Scanning' : 'Scan face'),
-                ),
-              ],
-            ),
-          ),
-          // Big standing preview — updates live as you scan / customise.
+          const SizedBox(height: 8),
+          // Big live preview
           Container(
-            margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -137,15 +80,12 @@ class _AvatarCreatorViewState extends State<AvatarCreatorView> {
               ]),
             ),
             child: FluttermojiCircleAvatar(
-              key: ValueKey('preview_$_rebuildKey'),
-              radius: 52,
-              backgroundColor: AppTheme.surfaceAlt,
-            ),
+                radius: 54, backgroundColor: AppTheme.surfaceAlt),
           ),
-          // fluttermoji customizer (includes its own live preview + selectors)
+          const SizedBox(height: 4),
+          // Customizer (its own selectors + autosave to local storage)
           Expanded(
             child: FluttermojiCustomizer(
-              key: ValueKey('customizer_$_rebuildKey'),
               scaffoldWidth: MediaQuery.of(context).size.width,
               autosave: true,
               theme: FluttermojiThemeData(
@@ -159,6 +99,29 @@ class _AvatarCreatorViewState extends State<AvatarCreatorView> {
               ),
             ),
           ),
+          // Onboarding: a clear "start" button that saves + enters the app.
+          if (widget.onboarding)
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_rounded),
+                    label: Text(_saving ? 'Saving…' : 'Start My Journey'),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

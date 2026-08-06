@@ -37,7 +37,6 @@ dependencies:
   cloud_firestore: ^5.1.0                   # Module 1: 存储 Profile 类别和阈值
 
   # ---- Virtual Avatar Assistant (Chua Yi Zhe) ----
-  google_mlkit_face_detection: ^0.13.2      # Face scan → seed avatar (aligned to MLKit 9.0)
   fluttermoji: ^1.0.2                        # Customizable cartoon avatar + editor
   flutter_tts: ^4.2.5                        # Assistant voice (text-to-speech)
   get: ^4.7.3

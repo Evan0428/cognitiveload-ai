@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'avatar_creator_view.dart';
 
 class SetupProfileView extends StatefulWidget {
   const SetupProfileView({super.key});
@@ -253,9 +254,13 @@ class _SetupProfileViewState extends State<SetupProfileView> {
           const SnackBar(content: Text('Profile configured successfully!'), backgroundColor: Colors.green),
         );
 
-        // 🟢 完美跳转：这里可以退回到登录、或者直接去你的主页 (Dashboard)
-        // 比如：Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeView()));
-        Navigator.pop(context);
+        if (!mounted) return;
+        // 🟢 Final onboarding step: create the virtual avatar before starting.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (_) => const AvatarCreatorView(onboarding: true)),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
