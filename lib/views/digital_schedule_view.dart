@@ -164,21 +164,29 @@ class _DigitalScheduleViewState extends State<DigitalScheduleView> {
                       }
 
                       if (existingEvent == null) {
-                        // 新增逻辑 (FR 3.1)：利用之前写好的智能关键字算分
-                        // 动态获取分数（内部自动走 _getScoreByKeyword 逻辑）
+                        // 新增逻辑 (FR 3.1)：利用统一的 IntensityClassifier 算分，确保与 OCR 逻辑完全一致
                         final appState = Provider.of<AppState>(context, listen: false);
 
-                        // 由于 AppState 里原生的 addEvent 接收标准 ScheduleEvent，
-                        // 我们直接在创建事件时动态丢进去：
-                        // 这里通过调用我们植入在 AppState 的映射方法来获取强度
-                        // 如果在外面拿不到内部私有方法，我们可以直接在下面手动写个临时映射，或将其在AppState里暴露。
-                        // 为了确保 100% 运行成功，我们在这里也配置一下映射：
-                        final String lowerTitle = _taskName.toLowerCase();
-                        TaskIntensity intensity = TaskIntensity.medium;
-                        if (lowerTitle.contains('exam') || lowerTitle.contains('test')) {
-                          intensity = TaskIntensity.critical;
-                        } else if (lowerTitle.contains('gym') || lowerTitle.contains('workout')) {
-                          intensity = TaskIntensity.low;
+                        // 使用核心分值引擎计算分数和强度
+                        final int taskScore = IntensityClassifier.scoreFromTitle(_taskName);
+                        final TaskIntensity intensity = TaskIntensityX.fromScore(taskScore);
+
+                        // 🟢 查重：同名 + 同日期 + 同开始时间 = 完全相同任务，拒绝重复
+                        final bool isDuplicate = appState.events.any((e) =>
+                            e.title.trim().toLowerCase() == _taskName.trim().toLowerCase() &&
+                            e.start.year == startDateTime.year &&
+                            e.start.month == startDateTime.month &&
+                            e.start.day == startDateTime.day &&
+                            e.start.hour == startDateTime.hour &&
+                            e.start.minute == startDateTime.minute);
+                        if (isDuplicate) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('This task is already scheduled at that date & time — duplicate not added.'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
                         }
 
                         final newEvent = ScheduleEvent(
@@ -188,13 +196,21 @@ class _DigitalScheduleViewState extends State<DigitalScheduleView> {
                           end: endDateTime,
                           intensity: intensity,
                           source: 'manual',
+                          cognitiveLoadScore: taskScore,
+                          ratingType: 'Automatic',
                         );
                         appState.addEvent(newEvent);
                       } else {
-                        // 编辑逻辑 (FR 3.2)
+                        // 编辑逻辑 (FR 3.2)：同样使用统一引擎更新强度
                         existingEvent.title = _taskName;
                         existingEvent.start = startDateTime;
                         existingEvent.end = endDateTime;
+                        
+                        // 重新计算强度
+                        final int taskScore = IntensityClassifier.scoreFromTitle(_taskName);
+                        existingEvent.cognitiveLoadScore = taskScore;
+                        existingEvent.intensity = TaskIntensityX.fromScore(taskScore);
+
                         // 触发 AppState 刷新并存盘
                         Provider.of<AppState>(context, listen: false).updateIntensity(existingEvent.id, existingEvent.intensity);
                       }

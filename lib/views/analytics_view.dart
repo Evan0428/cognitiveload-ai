@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../services/app_state.dart';
-import '../models/models.dart';
 
 class AnalyticsView extends StatelessWidget {
   const AnalyticsView({super.key});
@@ -28,6 +27,14 @@ class AnalyticsView extends StatelessWidget {
       }
       return dayLoad;
     }).toList();
+
+    // 🟢 Dynamic Y-axis: scale the chart to the busiest day (+25% headroom,
+    // rounded up to a clean 50) so day-to-day differences are clearly visible
+    // instead of every busy day flattening against a fixed ceiling.
+    final double maxLoad =
+        weeklyScores.fold<double>(0, (m, s) => s > m ? s : m);
+    final double chartMax =
+        maxLoad <= 0 ? 100 : ((maxLoad * 1.25) / 50).ceilToDouble() * 50;
 
     // 2. 🟢 Calculate Hourly Data for Heatmap (Today)
     final hourlyLoad = List.generate(24, (hour) {
@@ -81,22 +88,22 @@ class AnalyticsView extends StatelessWidget {
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-                          maxY: 120,
+                          maxY: chartMax,
                           barGroups: List.generate(
                               7,
                               (i) => BarChartGroupData(
                                     x: i,
                                     barRods: [
                                       BarChartRodData(
-                                        toY: weeklyScores[i] > 120 ? 120 : weeklyScores[i],
-                                        color: _getBarColor(weeklyScores[i]),
+                                        toY: weeklyScores[i].clamp(0.0, chartMax),
+                                        color: _getBarColor(weeklyScores[i], chartMax),
                                         width: 18,
                                         borderRadius: const BorderRadius.only(
                                             topLeft: Radius.circular(6),
                                             topRight: Radius.circular(6)),
                                         backDrawRodData: BackgroundBarChartRodData(
                                             show: true,
-                                            toY: 120,
+                                            toY: chartMax,
                                             color: const Color(0xFFF1F5F9)),
                                       )
                                     ],
@@ -138,7 +145,7 @@ class AnalyticsView extends StatelessWidget {
                           gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
-                              horizontalInterval: 30,
+                              horizontalInterval: chartMax / 4,
                               getDrawingHorizontalLine: (v) => FlLine(
                                   color: Colors.grey.withOpacity(0.1),
                                   strokeWidth: 1,
@@ -352,10 +359,12 @@ class AnalyticsView extends StatelessWidget {
     );
   }
 
-  Color _getBarColor(double score) {
-    if (score < 40) return const Color(0xFF00C853);
-    if (score < 85) return const Color(0xFFFFB300);
-    return const Color(0xFFF44336);
+  Color _getBarColor(double score, double maxLoad) {
+    if (maxLoad <= 0 || score <= 0) return const Color(0xFF00C853);
+    final double ratio = score / maxLoad;
+    if (ratio < 0.4) return const Color(0xFF00C853); // light day
+    if (ratio < 0.75) return const Color(0xFFFFB300); // moderate day
+    return const Color(0xFFF44336); // heavy day
   }
 
   Color _getHeatmapColor(double score) {

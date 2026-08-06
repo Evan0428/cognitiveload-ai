@@ -41,8 +41,8 @@ class NotificationService {
     }
   }
 
-  Future<void> show(String title, String body) async {
-    debugPrint('🔔 NOTIFY: $title — $body');
+  Future<void> show(String title, String body, {int id = 0}) async {
+    debugPrint('🔔 NOTIFY [$id]: $title — $body');
     if (!_supported) return;
 
     // Haptic nudge on the phone; the paired Apple Watch delivers its own
@@ -51,7 +51,7 @@ class NotificationService {
 
     if (!_ready) return;
     await _plugin.show(
-      0,
+      id,
       title,
       body,
       const NotificationDetails(

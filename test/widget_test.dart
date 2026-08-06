@@ -47,10 +47,15 @@ void main() {
     });
 
     test('scores are monotonic and exam is highest', () {
-      expect(IntensityClassifier.scoreFromTitle('Exam'), 90);
-      expect(IntensityClassifier.scoreFromTitle('Assignment'), 70);
-      expect(IntensityClassifier.scoreFromTitle('Lecture'), 50);
-      expect(IntensityClassifier.scoreFromTitle('Rest'), 20);
+      // Assert ordering, not exact magic numbers, so either partner can retune
+      // the NASA-TLX weights without breaking the test.
+      final exam = IntensityClassifier.scoreFromTitle('Exam');
+      final assignment = IntensityClassifier.scoreFromTitle('Assignment');
+      final lecture = IntensityClassifier.scoreFromTitle('Lecture');
+      final rest = IntensityClassifier.scoreFromTitle('Rest');
+      expect(exam, greaterThan(assignment));
+      expect(assignment, greaterThan(lecture));
+      expect(lecture, greaterThan(rest));
     });
   });
 

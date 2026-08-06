@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import '../models/models.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
+
+/// Outcome of a manual task submission.
+enum SubmitResult { success, duplicate, invalid, error }
 
 class AddTaskViewModel extends ChangeNotifier {
   final TaskService _taskService = TaskService();
@@ -58,28 +62,7 @@ class AddTaskViewModel extends ChangeNotifier {
       return;
     }
 
-    String lowerName = name.toLowerCase();
-
-    if (lowerName.contains('exam')) {
-      _cognitiveLoadScore = 95;
-    } else if (lowerName.contains('test')) {
-      _cognitiveLoadScore = 80;
-    } else if (lowerName.contains('quiz')) {
-      _cognitiveLoadScore = 75;
-    } else if (lowerName.contains('lab')) {
-      _cognitiveLoadScore = 65;
-    } else if (lowerName.contains('presentation') || lowerName.contains('assignment')) {
-      _cognitiveLoadScore = 60;
-    } else if (lowerName.contains('lecture') || lowerName.contains('study')) {
-      _cognitiveLoadScore = 45;
-    } else if (lowerName.contains('gym') || lowerName.contains('workout')) {
-      _cognitiveLoadScore = 20;
-    } else if (lowerName.contains('rest') || lowerName.contains('break')) {
-      _cognitiveLoadScore = 15;
-    } else {
-      _cognitiveLoadScore = 50;
-    }
-
+    _cognitiveLoadScore = IntensityClassifier.scoreFromTitle(name);
     notifyListeners();
   }
 
@@ -94,9 +77,9 @@ class AddTaskViewModel extends ChangeNotifier {
   }
 
   // 表单验证并提交到 Firebase
-  Future<bool> submitTask() async {
+  Future<SubmitResult> submitTask() async {
     if (_taskName.isEmpty || _selectedDate == null || _startTime == null || _endTime == null) {
-      return false;
+      return SubmitResult.invalid;
     }
 
     _isSaving = true;
@@ -105,6 +88,23 @@ class AddTaskViewModel extends ChangeNotifier {
     try {
       final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
       final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
+
+      // 🟢 查重：同名 + 同日期 + 同开始时间 = 完全相同的任务，拒绝重复添加。
+      // 只在“新增”时检查（编辑现有任务时跳过）。查询失败（如离线）则放行。
+      if (_editingTaskId == null) {
+        try {
+          final existing = await _taskService.getCurrentUserTasks();
+          final bool isDuplicate = existing.any((t) =>
+              t.name.trim().toLowerCase() == _taskName.trim().toLowerCase() &&
+              t.date.year == _selectedDate!.year &&
+              t.date.month == _selectedDate!.month &&
+              t.date.day == _selectedDate!.day &&
+              t.startTime == startStr);
+          if (isDuplicate) return SubmitResult.duplicate;
+        } catch (e) {
+          debugPrint("Duplicate check skipped (fetch failed): $e");
+        }
+      }
 
       final taskData = TaskModel(
         id: _editingTaskId,
@@ -121,12 +121,12 @@ class AddTaskViewModel extends ChangeNotifier {
       } else {
         await _taskService.saveTask(taskData);
       }
-      
+
       _resetForm();
-      return true;
+      return SubmitResult.success;
     } catch (e) {
       debugPrint("Failed to save task: $e");
-      return false;
+      return SubmitResult.error;
     } finally {
       _isSaving = false;
       notifyListeners();
