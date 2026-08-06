@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/assistant_bubble.dart';
 
 /// Physiological monitoring dashboard (Chua Yi Zhe's module).
 class WellbeingScreen extends StatelessWidget {
@@ -29,6 +30,8 @@ class WellbeingScreen extends StatelessWidget {
                   baselineDays: baseline?.days ?? 0,
                   baselineReliable: baseline?.isReliable ?? false,
                 ),
+                const SizedBox(height: 16),
+                const AssistantBubble(),
                 const SizedBox(height: 16),
                 _FocusLockCard(
                   enabled: state.focusLock,

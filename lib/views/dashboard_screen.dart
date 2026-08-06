@@ -9,6 +9,7 @@ import '../models/task_model.dart';
 import '../models/models.dart';
 import 'package:fluttermoji/fluttermoji.dart';
 import '../services/avatar_service.dart';
+import '../widgets/assistant_bubble.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
@@ -261,6 +262,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 // ❤️ Chua — physiological readiness; taps through to Wellbeing.
                 _buildReadinessCard(r),
+                const SizedBox(height: 16),
+
+                // 🗣️ Avatar assistant — speaks rule-based advice from the load.
+                const AssistantBubble(),
                 const SizedBox(height: 32),
 
                 todayTasks.isEmpty
