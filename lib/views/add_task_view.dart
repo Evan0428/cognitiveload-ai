@@ -239,19 +239,30 @@ class _AddTaskViewState extends State<AddTaskView> {
                       final st = vm.startTime!;
                       final et = vm.endTime!;
 
-                      // 1. 发起原始的云端上传
-                      bool isSuccess = await vm.submitTask();
+                      // 1. 发起原始的云端上传（内部已做同名+同日期+同时间查重）
+                      final result = await vm.submitTask();
 
-                      if (isSuccess && mounted) {
+                      if (!mounted) return;
+
+                      // 🟢 重复任务 → 橙色提示，不再重复添加
+                      if (result == SubmitResult.duplicate) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                '"$taskName" is already scheduled at that date & time — duplicate not added.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (result == SubmitResult.success && mounted) {
                         // 🟢 2. 数据联动闭环：同步注入本地核心状态管理，让主页圆圈分数产生化学反应 (FR 2.4)
-                        TaskIntensity mappedIntensity = TaskIntensity.medium;
-                        if (taskScore >= 80) {
-                          mappedIntensity = TaskIntensity.critical;
-                        } else if (taskScore >= 70) {
-                          mappedIntensity = TaskIntensity.high;
-                        } else if (taskScore <= 20) {
-                          mappedIntensity = TaskIntensity.low;
-                        }
+                        // 使用统一的从分数获取强度的映射，确保与 OCR 逻辑完全一致
+                        TaskIntensity mappedIntensity = TaskIntensityX.fromScore(taskScore);
 
                         globalState.addEvent(ScheduleEvent(
                           id: 'manual_${DateTime.now().microsecondsSinceEpoch}',
@@ -260,6 +271,8 @@ class _AddTaskViewState extends State<AddTaskView> {
                           end: DateTime(d.year, d.month, d.day, et.hour, et.minute),
                           intensity: mappedIntensity,
                           source: 'manual',
+                          cognitiveLoadScore: taskScore,
+                          ratingType: vm.ratingType,
                         ));
 
                         ScaffoldMessenger.of(context).showSnackBar(

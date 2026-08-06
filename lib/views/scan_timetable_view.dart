@@ -34,13 +34,12 @@ class ScanTimetableView extends StatelessWidget {
                 ],
               ),
             )
-                : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Spacer(),
+                : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                   // 🔮 图标圈
                   Center(
                     child: Container(
@@ -70,11 +69,11 @@ class ScanTimetableView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // 🖼️ 按钮二：相册上传 (FR 2.2)
+                  // 🖼️ 按钮二：相册上传
                   _buildActionButton(
-                    icon: Icons.upload_file_outlined,
-                    title: 'Upload Image',
-                    subtitle: 'Select from gallery',
+                    icon: Icons.photo_library_outlined,
+                    title: 'Upload from Gallery',
+                    subtitle: 'Select image from your photos',
                     onTap: () async {
                       bool success = await vm.uploadFromGallery();
                       if (success && context.mounted) {
@@ -82,7 +81,21 @@ class ScanTimetableView extends StatelessWidget {
                       }
                     },
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 16),
+
+                  // 📄 按钮三：上传 PDF
+                  _buildActionButton(
+                    icon: Icons.picture_as_pdf_outlined,
+                    title: 'Upload PDF',
+                    subtitle: 'Import schedule from PDF document',
+                    onTap: () async {
+                      bool success = await vm.uploadPdf();
+                      if (success && context.mounted) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ReviewEditView(viewModel: vm)));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 40),
 
                   // 💡 底部提示框
                   Container(
@@ -100,6 +113,7 @@ class ScanTimetableView extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                 ],
+              ),
               ),
             ),
           );
@@ -119,13 +133,15 @@ class ScanTimetableView extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.white, size: 26),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
             ),
           ],
         ),

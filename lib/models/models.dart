@@ -39,13 +39,13 @@ extension TaskIntensityX on TaskIntensity {
   int get score {
     switch (this) {
       case TaskIntensity.low:
-        return 20; // break, rest
+        return 15; // break, rest
       case TaskIntensity.medium:
         return 50; // lecture, meeting
       case TaskIntensity.high:
-        return 70; // assignment, lab, project
+        return 75; // assignment, lab, project, practical, tutorial
       case TaskIntensity.critical:
-        return 90; // exam, deadline, viva
+        return 80; // exam, deadline, viva
     }
   }
 
@@ -77,14 +77,14 @@ extension TaskIntensityX on TaskIntensity {
 /// (Lim) and the manual Add-Task flow call this so they never disagree.
 class IntensityClassifier {
   static const _critical = [
-    'exam', 'final', 'test', 'quiz', 'deadline', 'viva', 'defense', 'midterm'
+    'exam', 'final', 'test', 'quiz', 'deadline', 'viva', 'defense', 'mpu test', 'midterm'
   ];
   static const _high = [
     'assignment', 'project', 'lab', 'report', 'presentation', 'submission',
-    'tutorial'
+    'tutorial', 'physics lab', 'practical', 'amali'
   ];
   static const _low = [
-    'break', 'lunch', 'rest', 'free', 'recess', 'gym', 'nap', 'sleep'
+    'break', 'lunch', 'rest', 'free', 'recess', 'gym', 'nap', 'sleep', 'morning break'
   ];
 
   /// Classify a task title into its NASA-TLX intensity band.

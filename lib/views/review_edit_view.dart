@@ -199,20 +199,91 @@ class _ReviewEditViewState extends State<ReviewEditView> {
                   final globalState = context.read<AppState>();
 
                   // 🟢 将本地全局状态传入，进行：云端保存备份 + 本地加总算分完美大联动！
-                  bool success = await widget.viewModel.saveAllTasksToFirebase(globalState);
+                  final result = await widget.viewModel.saveAllTasksToFirebase(globalState);
 
-                  if (success && context.mounted) {
+                  if (!context.mounted) return;
+
+                  // 🟢 有重复任务 → 先弹窗告知用户被跳过的项目
+                  if (result.hasDuplicates) {
+                    await _showDuplicatesDialog(context, result);
+                    if (!context.mounted) return;
+                  }
+
+                  if (result.success) {
+                    final msg = result.savedCount > 0
+                        ? '${result.savedCount} task(s) saved & load recalculated!'
+                        : 'No new tasks saved — all were already on your schedule.';
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All extracted tasks saved & load recalculated!'), backgroundColor: Colors.green),
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: result.savedCount > 0 ? Colors.green : Colors.orange,
+                      ),
                     );
 
-                    // 彻底回到最前面的 Dashboard 主页
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    // 只要有新任务存入就回到主页；若全是重复则留在本页让用户处理
+                    if (result.savedCount > 0) {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    }
                   }
                 },
                 child: Text('Save to Schedule (${widget.viewModel.extractedTasks.length} tasks)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tells the user which extracted tasks were skipped because the exact same
+  /// class (same subject, date and start time) is already on their schedule.
+  Future<void> _showDuplicatesDialog(BuildContext context, TaskSaveResult result) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.copy_all_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Expanded(child: Text('Duplicate tasks skipped', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${result.duplicates.length} task(s) were already on your schedule at the same date & time, so they were not added again:',
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: result.duplicates
+                      .map((d) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('•  ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Expanded(child: Text(d, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)))),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK', style: TextStyle(color: Color(0xFF4A3AFF), fontWeight: FontWeight.bold)),
           ),
         ],
       ),

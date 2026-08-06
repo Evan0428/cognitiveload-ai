@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
 import '../models/task_model.dart';
+import '../models/user_model.dart';
 import 'cognitive_load_engine.dart';
 import 'health_service.dart';
 import 'notification_service.dart';
@@ -20,11 +21,18 @@ class AppState extends ChangeNotifier {
   final CognitiveLoadEngine engine = CognitiveLoadEngine();
   final NotificationService notifier = NotificationService();
 
+  UserModel? _userProfile;
   final List<ScheduleEvent> _events = [];
   PhysiologicalSnapshot? _snapshot;
   CognitiveLoadResult? _result;
   bool _loading = false;
+  double? _lastNotifiedLoad;
+  DateTime? _lastCheckedDay;
+  final Set<String> _sentPreTaskAlerts = {};
+  final Set<String> _sentBreakSuggestions = {};
+  Timer? _notificationTimer;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   /// One snapshot per day for up to 14 days — feeds the rolling baseline
   /// (Chua's module, report section 2.4.4).
@@ -53,6 +61,7 @@ class AppState extends ChangeNotifier {
   PhysiologicalSnapshot? get snapshot => _snapshot;
   CognitiveLoadResult? get result => _result;
   bool get loading => _loading;
+  UserModel? get userProfile => _userProfile;
 
   /// Rolling personal baseline from prior days' snapshots (today excluded so a
   /// bad morning doesn't drag its own reference down).
@@ -100,16 +109,23 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     await notifier.init();
-    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((_) {
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((user) {
       syncTasksFromFirestore();
+      _listenToUserProfile(user?.uid);
       syncPhysiologyFromFirestore();
     });
 
     await _load();
     await syncTasksFromFirestore();
+    _listenToUserProfile(FirebaseAuth.instance.currentUser?.uid);
     await syncPhysiologyFromFirestore();
     await refreshPhysiology();
     _recompute();
+
+    _notificationTimer?.cancel();
+    _notificationTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _checkScheduledNotifications();
+    });
 
     // Real-time workload strain tracking: re-sample physiology periodically so
     // HR spikes during a work session are caught, not just on manual sync.
@@ -122,9 +138,31 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _notificationTimer?.cancel();
     _authSubscription?.cancel();
     _strainTimer?.cancel();
+    _userSubscription?.cancel();
     super.dispose();
+  }
+
+  void _listenToUserProfile(String? uid) {
+    _userSubscription?.cancel();
+    if (uid == null) {
+      _userProfile = null;
+      return;
+    }
+
+    _userSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && doc.data() != null) {
+        _userProfile = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+        _recompute();
+        notifyListeners();
+      }
+    });
   }
 
   Future<void> syncTasksFromFirestore() async {
@@ -164,18 +202,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     final file = imageFile is File ? imageFile : null;
-    final extracted = await ocr.recognizeAndStructureImage(file);
+    final extracted = await ocr.recognizeAndStructureFile(file);
 
     var counter = 0;
     for (final task in extracted) {
-      final now = DateTime.now();
-      final startParts = _dateTimeFromDateAndTime(now, task.startTime);
+      final taskDate = _parseDate(task.date) ?? DateTime.now();
+      final startParts = _dateTimeFromDateAndTime(taskDate, task.startTime);
       final endParts = _dateTimeFromDateAndTime(
-        now,
+        taskDate,
         task.endTime,
         fallback: startParts.add(const Duration(hours: 1, minutes: 30)),
       );
-      final customScore = _getScoreByKeyword(task.subject);
+      final customScore = IntensityClassifier.scoreFromTitle(task.subject);
 
       _events.add(ScheduleEvent(
         id: 'ocr_${DateTime.now().microsecondsSinceEpoch}_$counter',
@@ -201,7 +239,7 @@ class AppState extends ChangeNotifier {
 
   Future<String> extractRawText(dynamic imageFile) async {
     final file = imageFile is File ? imageFile : null;
-    final tasks = await ocr.recognizeAndStructureImage(file);
+    final tasks = await ocr.recognizeAndStructureFile(file);
     return tasks
         .map((e) => '${e.startTime}-${e.endTime} ${e.subject}')
         .join('\n');
@@ -245,6 +283,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _recompute() {
+    _clearNotificationsIfNewDay();
     final today = DateTime.now();
     final todayEvents = _events
         .where((event) =>
@@ -283,6 +322,123 @@ class AppState extends ChangeNotifier {
     } else {
       // Back in the safe zone: allow the next escalation to notify again.
       _lastNotifiedLevel = null;
+
+    // 🔴 Build the Real Load Threat Alert function
+    _checkAndNotifyLoadThreat(r);
+  }
+
+  void _checkAndNotifyLoadThreat(CognitiveLoadResult r) {
+    if (_userProfile == null) return;
+
+    // 1. Check if user enabled the notification
+    if (!_userProfile!.loadThresholdAlert) {
+      _lastNotifiedLoad = null; // Reset so if they re-enable, they can be notified
+      return;
+    }
+
+    // 2. Check if combined score exceeds user's threshold
+    final currentLoad = r.combinedLoad;
+    final threshold = _userProfile!.burnoutThreshold;
+
+    if (currentLoad >= threshold) {
+      // Only notify if we haven't notified for this "over-threshold" event yet,
+      // or if the load has increased significantly since last alert (e.g., by 5 points)
+      if (_lastNotifiedLoad == null || currentLoad > _lastNotifiedLoad! + 5) {
+        notifier.show(
+          'Load Threat Alert!',
+          'Your daily load score (${currentLoad.toStringAsFixed(1)}) has exceeded your threshold of ${threshold.toStringAsFixed(0)}.',
+          id: 1,
+        );
+        _lastNotifiedLoad = currentLoad;
+      }
+    } else {
+      // If we are below threshold, reset the last notified load
+      _lastNotifiedLoad = null;
+    }
+  }
+
+  void _checkScheduledNotifications() {
+    if (_userProfile == null) return;
+    final now = DateTime.now();
+    _clearNotificationsIfNewDay();
+
+    // 1. Pre-Task Alert: 15 min before high-intensity tasks
+    if (_userProfile!.preTaskAlert) {
+      for (final event in _events) {
+        final isHighIntensity = event.intensity == TaskIntensity.high ||
+            event.intensity == TaskIntensity.critical;
+
+        if (isHighIntensity) {
+          // Check if task starts today
+          if (event.start.year == now.year &&
+              event.start.month == now.month &&
+              event.start.day == now.day) {
+            final diff = event.start.difference(now).inMinutes;
+            // Trigger if task starts in 10-15 minutes
+            if (diff <= 15 && diff >= 10) {
+              final alertId = 'pre_${event.id}';
+              if (!_sentPreTaskAlerts.contains(alertId)) {
+                notifier.show(
+                  'High Intensity Task Ahead',
+                  '"${event.title}" starts in $diff mins. Prepare for high cognitive demand.',
+                  id: 2,
+                );
+                _sentPreTaskAlerts.add(alertId);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Break Suggestion: After consecutive high-load tasks
+    if (_userProfile!.breakSuggestion) {
+      final sortedToday = events
+          .where((e) =>
+              e.start.year == now.year &&
+              e.start.month == now.month &&
+              e.start.day == now.day)
+          .toList();
+
+      for (int i = 1; i < sortedToday.length; i++) {
+        final prev = sortedToday[i - 1];
+        final curr = sortedToday[i];
+
+        final isPrevHigh = prev.intensity == TaskIntensity.high ||
+            prev.intensity == TaskIntensity.critical;
+        final isCurrHigh = curr.intensity == TaskIntensity.high ||
+            curr.intensity == TaskIntensity.critical;
+
+        if (isPrevHigh && isCurrHigh) {
+          final gap = curr.start.difference(prev.end).inMinutes;
+          // Consecutive if gap is less than 15 mins
+          if (gap <= 15) {
+            final diffSinceEnd = now.difference(curr.end).inMinutes;
+            // Notify if current task ended within the last 5 minutes
+            if (diffSinceEnd >= 0 && diffSinceEnd < 5) {
+              final alertId = 'break_${curr.id}';
+              if (!_sentBreakSuggestions.contains(alertId)) {
+                notifier.show(
+                  'Time for a Break!',
+                  'You\'ve completed consecutive high-load tasks. A 15-minute recovery break is recommended.',
+                  id: 3,
+                );
+                _sentBreakSuggestions.add(alertId);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void _clearNotificationsIfNewDay() {
+    final now = DateTime.now();
+    if (_lastCheckedDay == null || _lastCheckedDay!.day != now.day) {
+      _sentPreTaskAlerts.clear();
+      _sentBreakSuggestions.clear();
+      _lastNotifiedLoad = null;
+      _lastCheckedDay = now;
     }
   }
 
@@ -313,7 +469,7 @@ class AppState extends ChangeNotifier {
       title: task.name.isEmpty ? 'Untitled Task' : task.name,
       start: start,
       end: end,
-      intensity: _getIntensityByScore(task.cognitiveLoadScore),
+      intensity: TaskIntensityX.fromScore(task.cognitiveLoadScore),
       source: task.ratingType == 'Automatic (OCR)' ? 'ocr' : 'manual',
       cognitiveLoadScore: task.cognitiveLoadScore,
       ratingType: task.ratingType,
@@ -329,10 +485,7 @@ class AppState extends ChangeNotifier {
   }
 
   TaskIntensity _getIntensityByScore(int score) {
-    if (score >= 85) return TaskIntensity.critical;
-    if (score >= 70) return TaskIntensity.high;
-    if (score <= 30) return TaskIntensity.low;
-    return TaskIntensity.medium;
+    return TaskIntensityX.fromScore(score);
   }
 
   DateTime _dateTimeFromDateAndTime(
@@ -354,8 +507,24 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  DateTime? _parseDate(String value) {
+    try {
+      final parts = value.split('/');
+      if (parts.length != 3) return null;
+      return DateTime(
+        int.parse(parts[2]), // Year
+        int.parse(parts[1]), // Month
+        int.parse(parts[0]), // Day
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
   TimeOfDay? _parseTime(String value) {
     final normalized = value.trim().toLowerCase();
+
+    // Support HH:mm, H:mm, HH.mm, H.mm with optional am/pm
     final match =
         RegExp(r'^(\d{1,2}):(\d{2})\s*(am|pm)?$').firstMatch(normalized);
     if (match == null) return null;
@@ -367,6 +536,8 @@ class AppState extends ChangeNotifier {
 
     if (period == 'pm' && hour < 12) hour += 12;
     if (period == 'am' && hour == 12) hour = 0;
+
+    // Safety check for 24h conversion
     if (hour > 23) return null;
 
     return TimeOfDay(hour: hour, minute: minute);

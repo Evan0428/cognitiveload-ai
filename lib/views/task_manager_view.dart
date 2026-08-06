@@ -311,11 +311,16 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                     addTaskVM.setStartTime(_startTime);
                     addTaskVM.setEndTime(_endTime);
 
-                    final success = await addTaskVM.submitTask();
-                    if (success) {
+                    final result = await addTaskVM.submitTask();
+                    if (result == SubmitResult.success) {
                       await appState.syncTasksFromFirestore();
                       messenger.showSnackBar(const SnackBar(content: Text("Task successfully saved!")));
                       navigator.pop();
+                    } else if (result == SubmitResult.duplicate) {
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('This task is already scheduled at that date & time — duplicate not added.'),
+                        backgroundColor: Colors.orange,
+                      ));
                     } else {
                       messenger.showSnackBar(const SnackBar(content: Text('Could not save task. Please try again.')));
                     }

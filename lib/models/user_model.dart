@@ -5,6 +5,9 @@ class UserModel {
   final String mobileNumber;
   final String profileType;
   final double burnoutThreshold;
+  final bool loadThresholdAlert;
+  final bool preTaskAlert;
+  final bool breakSuggestion;
 
   UserModel({
     required this.uid,
@@ -13,8 +16,10 @@ class UserModel {
     required this.mobileNumber,
     required this.profileType,
     required this.burnoutThreshold,
+    this.loadThresholdAlert = true,
+    this.preTaskAlert = true,
+    this.breakSuggestion = true,
   });
-
 
   Map<String, dynamic> toMap() {
     return {
@@ -24,6 +29,9 @@ class UserModel {
       'mobileNumber': mobileNumber,
       'profileType': profileType,
       'burnoutThreshold': burnoutThreshold,
+      'loadThresholdAlert': loadThresholdAlert,
+      'preTaskAlert': preTaskAlert,
+      'breakSuggestion': breakSuggestion,
     };
   }
 
@@ -34,7 +42,10 @@ class UserModel {
       email: map['email'] ?? '',
       mobileNumber: map['mobileNumber'] ?? '',
       profileType: map['profileType'] ?? 'Student',
-      burnoutThreshold: (map['burnoutThreshold'] ?? 100.0).toDouble(),
+      burnoutThreshold: (map['burnoutThreshold'] ?? 70.0).toDouble(),
+      loadThresholdAlert: map['loadThresholdAlert'] ?? true,
+      preTaskAlert: map['preTaskAlert'] ?? true,
+      breakSuggestion: map['breakSuggestion'] ?? true,
     );
   }
 }

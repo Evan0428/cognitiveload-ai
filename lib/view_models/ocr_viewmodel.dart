@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/extracted_task_model.dart';
@@ -18,28 +19,39 @@ class OcrViewModel extends ChangeNotifier {
   bool get isProcessing => _isProcessing;
   List<ExtractedTaskModel> get extractedTasks => _extractedTasks;
 
-  /// 🟢 拍照
+  /// 🟢 拍照 (保持不变，因为相机只产生图片)
   Future<bool> capturePhoto() async {
     final XFile? photo = await _imagePicker.pickImage(source: ImageSource.camera, imageQuality: 90);
     if (photo == null) return false;
-    return await _processImageFile(File(photo.path));
+    return await _processFile(File(photo.path));
   }
 
-  /// 🟢 从相册上传
+  /// 🟢 从相册上传 (仅限图片)
   Future<bool> uploadFromGallery() async {
     final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (image == null) return false;
-    return await _processImageFile(File(image.path));
+    return await _processFile(File(image.path));
   }
 
-  /// 🟢 核心桥接修改：调用融合版新服务函数
-  Future<bool> _processImageFile(File file) async {
+  /// 🟢 上传 PDF 文件
+  Future<bool> uploadPdf() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+    
+    if (result == null || result.files.single.path == null) return false;
+    return await _processFile(File(result.files.single.path!));
+  }
+
+  /// 🟢 核心桥接修改：处理不同格式的文件
+  Future<bool> _processFile(File file) async {
     _isProcessing = true;
     _extractedTasks.clear(); // 每次扫描前先清空旧数据
     notifyListeners();
 
     try {
-      _extractedTasks = await _ocrService.recognizeAndStructureImage(file);
+      _extractedTasks = await _ocrService.recognizeAndStructureFile(file);
       _isProcessing = false;
       notifyListeners();
       return _extractedTasks.isNotEmpty;
@@ -56,7 +68,7 @@ class OcrViewModel extends ChangeNotifier {
     if (index >= 0 && index < _extractedTasks.length) {
       _extractedTasks[index].subject = newSubject;
       // 随着用户实时打字修改，重新通过矩阵匹配最新权重分！
-      _extractedTasks[index].cognitiveLoadScore = OcrService.classifyIntensityToScore(newSubject);
+      _extractedTasks[index].cognitiveLoadScore = _ocrService.classifyIntensityToScore(newSubject);
       notifyListeners();
     }
   }
@@ -66,17 +78,90 @@ class OcrViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Signature that uniquely identifies a task occurrence: same subject on the
+  /// same date at the same start time. Two tasks with the same signature are
+  /// the *same* class — impossible to hold twice — so the second is a duplicate.
+  String _signature(String subject, int y, int mo, int d, int h, int mi) {
+    final s = subject.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    return '$s|$y-$mo-$d|$h:$mi';
+  }
+
   /// 🟢 终极双流合并保存：云端备份 + 同步刷新本地 AppState 联动主页大圆圈
-  Future<bool> saveAllTasksToFirebase(AppState globalState) async {
+  /// 现在带查重：已存在（或本批次重复）的任务会被跳过并回报给用户。
+  Future<TaskSaveResult> saveAllTasksToFirebase(AppState globalState) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (_extractedTasks.isEmpty) return false;
+    if (_extractedTasks.isEmpty) {
+      return const TaskSaveResult(success: false, savedCount: 0, duplicates: []);
+    }
+
+    // Signatures of tasks already saved in the schedule.
+    final Set<String> existing = {
+      for (final e in globalState.events)
+        _signature(e.title, e.start.year, e.start.month, e.start.day,
+            e.start.hour, e.start.minute)
+    };
+    final Set<String> seenInBatch = {};
 
     try {
       final batch = FirebaseFirestore.instance.batch();
-      DateTime now = DateTime.now();
+      int index = 0;
+      int savedCount = 0;
+      final List<String> duplicates = [];
 
       for (var task in _extractedTasks) {
-        // --- 1. 同步推送至云端 Firestore ---
+        // --- 1. Date Parsing (Standardize to DateTime) ---
+        DateTime taskDate = DateTime.now();
+        try {
+          final parts = task.date.split('/');
+          if (parts.length == 3) {
+            taskDate = DateTime(
+              int.parse(parts[2]), // Year
+              int.parse(parts[1]), // Month
+              int.parse(parts[0]), // Day
+            );
+          }
+        } catch (e) {
+          debugPrint("Date parse error for ${task.date}: $e");
+        }
+
+        // --- 2. Time Parsing (Robustly handle OCR formats) ---
+        int startHour = 9, startMin = 0;
+        int endHour = 10, endMin = 30;
+
+        final startMatch = RegExp(r'(\d{1,2})[:.](\d{2})\s*(am|pm)?', caseSensitive: false)
+            .firstMatch(task.startTime.toLowerCase());
+        if (startMatch != null) {
+          startHour = int.parse(startMatch.group(1)!);
+          startMin = int.parse(startMatch.group(2)!);
+          final p = startMatch.group(3);
+          if (p == 'pm' && startHour < 12) startHour += 12;
+          if (p == 'am' && startHour == 12) startHour = 0;
+        }
+
+        final endMatch = RegExp(r'(\d{1,2})[:.](\d{2})\s*(am|pm)?', caseSensitive: false)
+            .firstMatch(task.endTime.toLowerCase());
+        if (endMatch != null) {
+          endHour = int.parse(endMatch.group(1)!);
+          endMin = int.parse(endMatch.group(2)!);
+          final p = endMatch.group(3);
+          if (p == 'pm' && endHour < 12) endHour += 12;
+          if (p == 'am' && endHour == 12) endHour = 0;
+        }
+
+        // --- 2b. Duplicate check (same subject + date + start time) ---
+        final sig = _signature(task.subject, taskDate.year, taskDate.month,
+            taskDate.day, startHour, startMin);
+        if (existing.contains(sig) || seenInBatch.contains(sig)) {
+          duplicates.add('${task.subject} — ${task.day} ${task.date} ${task.startTime}');
+          continue; // skip: this exact class is already scheduled
+        }
+        seenInBatch.add(sig);
+
+        // --- 3. Normalization (HH:mm format for Firestore consistency) ---
+        final String firestoreStart = "${startHour.toString().padLeft(2, '0')}:${startMin.toString().padLeft(2, '0')}";
+        final String firestoreEnd = "${endHour.toString().padLeft(2, '0')}:${endMin.toString().padLeft(2, '0')}";
+
+        // --- 4. Firestore Save ---
         if (uid != null) {
           DocumentReference docRef = FirebaseFirestore.instance
               .collection('users')
@@ -86,58 +171,59 @@ class OcrViewModel extends ChangeNotifier {
 
           batch.set(docRef, {
             'name': task.subject,
-            'date': Timestamp.fromDate(now),
-            'startTime': task.startTime,
-            'endTime': task.endTime,
+            'date': Timestamp.fromDate(taskDate),
+            'startTime': firestoreStart,
+            'endTime': firestoreEnd,
             'cognitiveLoadScore': task.cognitiveLoadScore,
             'ratingType': 'Automatic (OCR)',
             'createdAt': FieldValue.serverTimestamp(),
           });
         }
 
-        // --- 2. 完美联动：同步注入本地核心数据流，立即刷新 Dashboard 总分数 (FR 2.4) ---
-        // 解析小时和分钟
-        int startHour = 9;
-        int startMin = 0;
-        if (task.startTime.contains(':')) {
-          var parts = task.startTime.replaceAll(RegExp(r'[a-zA-Z\s]'), '').split(':');
-          startHour = int.tryParse(parts[0]) ?? 9;
-          startMin = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
-        }
+        // --- 5. Local State Sync (AppState) ---
+        TaskIntensity mappedIntensity = TaskIntensityX.fromScore(task.cognitiveLoadScore);
 
-        // 映射认知负荷分数到原本的旧架构枚举，确保分析引擎不出错
-        TaskIntensity mappedIntensity = TaskIntensity.medium;
-        if (task.cognitiveLoadScore >= 80) {
-          mappedIntensity = TaskIntensity.critical;
-        } else if (task.cognitiveLoadScore >= 70) {
-          mappedIntensity = TaskIntensity.high;
-        } else if (task.cognitiveLoadScore <= 20) {
-          mappedIntensity = TaskIntensity.low;
-        }
-
-        // 呼叫全局 AppState 的机制，直接注入并重算总分！
         globalState.addEvent(ScheduleEvent(
-          id: 'ocr_${DateTime.now().microsecondsSinceEpoch}_${task.subject.hashCode}',
+          id: 'ocr_${taskDate.millisecondsSinceEpoch}_${task.subject.hashCode}_$index',
           title: task.subject,
-          start: DateTime(now.year, now.month, now.day, startHour, startMin),
-          end: DateTime(now.year, now.month, now.day, startHour + 1, startMin + 30),
+          start: DateTime(taskDate.year, taskDate.month, taskDate.day, startHour, startMin),
+          end: DateTime(taskDate.year, taskDate.month, taskDate.day, endHour, endMin),
           intensity: mappedIntensity,
           source: 'ocr',
+          cognitiveLoadScore: task.cognitiveLoadScore,
+          ratingType: 'Automatic (OCR)',
         ));
+        index++;
+        savedCount++;
       }
 
-      // 提交云端 Batch 异步事务
-      if (uid != null) {
-        await batch.commit();
-      }
-
-      // 清空当前处理队列，防止重复提交
+      if (uid != null && savedCount > 0) await batch.commit();
       _extractedTasks.clear();
       notifyListeners();
-      return true;
+      return TaskSaveResult(
+        success: true,
+        savedCount: savedCount,
+        duplicates: duplicates,
+      );
     } catch (e) {
       debugPrint("Batch save & sync error: $e");
-      return false;
+      return const TaskSaveResult(success: false, savedCount: 0, duplicates: []);
     }
   }
+}
+
+/// Outcome of a save: how many new tasks were stored and which were skipped as
+/// duplicates (already on the schedule, or repeated within the same import).
+class TaskSaveResult {
+  final bool success;
+  final int savedCount;
+  final List<String> duplicates;
+
+  const TaskSaveResult({
+    required this.success,
+    required this.savedCount,
+    required this.duplicates,
+  });
+
+  bool get hasDuplicates => duplicates.isNotEmpty;
 }

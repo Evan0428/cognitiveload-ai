@@ -9,6 +9,7 @@
       "dependencies": [
         "cloud_firestore",
         "cupertino_icons",
+        "file_picker",
         "firebase_auth",
         "firebase_core",
         "fl_chart",
@@ -19,6 +20,9 @@
         "image",
         "image_picker",
         "intl",
+        "path",
+        "path_provider",
+        "pdfx",
         "provider",
         "shared_preferences"
       ],
@@ -150,6 +154,11 @@
       ]
     },
     {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
+    },
+    {
       "name": "image",
       "version": "4.8.0",
       "dependencies": [
@@ -195,6 +204,36 @@
         "meta",
         "sky_engine",
         "vector_math"
+      ]
+    },
+    {
+      "name": "path_provider_windows",
+      "version": "2.3.0",
+      "dependencies": [
+        "ffi",
+        "flutter",
+        "path",
+        "path_provider_platform_interface"
+      ]
+    },
+    {
+      "name": "path_provider_platform_interface",
+      "version": "2.1.2",
+      "dependencies": [
+        "flutter",
+        "platform",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "path_provider_linux",
+      "version": "2.2.1",
+      "dependencies": [
+        "ffi",
+        "flutter",
+        "path",
+        "path_provider_platform_interface",
+        "xdg_directories"
       ]
     },
     {
@@ -284,6 +323,63 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "async",
+      "version": "2.13.1",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
+      "name": "leak_tracker_testing",
+      "version": "3.0.2",
+      "dependencies": [
+        "leak_tracker",
+        "matcher",
+        "meta"
+      ]
+    },
+    {
+      "name": "leak_tracker",
+      "version": "11.0.2",
+      "dependencies": [
+        "clock",
+        "collection",
+        "meta",
+        "path",
+        "vm_service"
+      ]
+    },
+    {
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "dependencies": []
+    },
+    {
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "dependencies": [
+        "source_span"
+      ]
+    },
+    {
+      "name": "source_span",
+      "version": "1.10.2",
+      "dependencies": [
+        "collection",
+        "path",
+        "term_glyph"
+      ]
+    },
+    {
+      "name": "boolean_selector",
+      "version": "2.1.2",
+      "dependencies": [
+        "source_span",
+        "string_scanner"
       ]
     },
     {
@@ -601,16 +697,13 @@
       "dependencies": []
     },
     {
-      "name": "async",
-      "version": "2.13.1",
-      "dependencies": [
-        "collection",
-        "meta"
-      ]
+      "name": "ffi",
+      "version": "2.2.0",
+      "dependencies": []
     },
     {
-      "name": "leak_tracker_testing",
-      "version": "3.0.2",
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
       "dependencies": [
         "leak_tracker",
         "matcher",
@@ -618,19 +711,23 @@
       ]
     },
     {
-      "name": "leak_tracker",
-      "version": "11.0.2",
+      "name": "platform",
+      "version": "3.1.6",
+      "dependencies": []
+    },
+    {
+      "name": "xdg_directories",
+      "version": "1.1.0",
       "dependencies": [
         "clock",
         "collection",
         "meta",
-        "path",
-        "vm_service"
+        "path"
       ]
     },
     {
-      "name": "term_glyph",
-      "version": "1.2.2",
+      "name": "vm_service",
+      "version": "15.2.0",
       "dependencies": []
     },
     {
@@ -884,9 +981,108 @@
       "dependencies": []
     },
     {
-      "name": "platform",
-      "version": "3.1.6",
+      "name": "path_provider",
+      "version": "2.1.5",
+      "dependencies": [
+        "flutter",
+        "path_provider_android",
+        "path_provider_foundation",
+        "path_provider_linux",
+        "path_provider_platform_interface",
+        "path_provider_windows"
+      ]
+    },
+    {
+      "name": "pdfx",
+      "version": "2.9.2",
+      "dependencies": [
+        "extension",
+        "flutter",
+        "flutter_web_plugins",
+        "meta",
+        "photo_view",
+        "plugin_platform_interface",
+        "synchronized",
+        "universal_platform",
+        "uuid",
+        "vector_math",
+        "web"
+      ]
+    },
+    {
+      "name": "universal_platform",
+      "version": "1.1.0",
       "dependencies": []
+    },
+    {
+      "name": "photo_view",
+      "version": "0.15.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
+      "name": "extension",
+      "version": "0.6.0",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "synchronized",
+      "version": "3.4.0",
+      "dependencies": []
+    },
+    {
+      "name": "uuid",
+      "version": "4.6.0",
+      "dependencies": [
+        "crypto",
+        "fixnum"
+      ]
+    },
+    {
+      "name": "path_provider_foundation",
+      "version": "2.5.1",
+      "dependencies": [
+        "flutter",
+        "path_provider_platform_interface"
+      ]
+    },
+    {
+      "name": "crypto",
+      "version": "3.0.7",
+      "dependencies": [
+        "typed_data"
+      ]
+    },
+    {
+      "name": "path_provider_android",
+      "version": "2.2.23",
+      "dependencies": [
+        "flutter",
+        "path_provider_platform_interface"
+      ]
+    },
+    {
+      "name": "file_picker",
+      "version": "8.3.7",
+      "dependencies": [
+        "cross_file",
+        "ffi",
+        "flutter",
+        "flutter_plugin_android_lifecycle",
+        "flutter_web_plugins",
+        "path",
+        "plugin_platform_interface",
+        "web",
+        "win32"
+      ]
     },
     {
       "name": "flutter_launcher_icons",
