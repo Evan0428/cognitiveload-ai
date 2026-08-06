@@ -7,12 +7,15 @@ import '../services/cognitive_load_engine.dart';
 import '../view_models/add_task_viewmodel.dart'; 
 import '../models/task_model.dart';
 import '../models/models.dart';
+import 'package:fluttermoji/fluttermoji.dart';
+import '../services/avatar_service.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
 import 'scan_timetable_view.dart';
 import 'analytics_view.dart';
 import 'wellbeing_screen.dart';
+import 'avatar_creator_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -29,6 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchUserNameFromFirestore();
+    // Restore the user's saved avatar from Firestore (cross-device).
+    AvatarService().loadFromCloud();
   }
 
   Future<void> _fetchUserNameFromFirestore() async {
@@ -204,14 +209,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
-                    onPressed: () => _showLogoutDialog(context),
-                  ),
+                Row(
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
+                      onPressed: () => _showLogoutDialog(context),
+                    ),
+                    const Spacer(),
+                    // 🧑‍🎨 Virtual avatar (Chua) — tap to create / edit.
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AvatarCreatorView()),
+                        );
+                        if (mounted) setState(() {});
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: FluttermojiCircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
 
