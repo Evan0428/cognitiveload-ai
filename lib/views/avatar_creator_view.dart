@@ -35,20 +35,20 @@ class _AvatarCreatorViewState extends State<AvatarCreatorView> {
     if (picked == null) return;
 
     setState(() => _scanning = true);
-    final idx = await _service.seedFromSelfie(File(picked.path));
+    final ok = await _service.seedFromSelfie(File(picked.path));
     if (!mounted) return;
     // Bump the key so the customizer rebuilds and shows the seeded avatar.
     setState(() {
       _scanning = false;
-      if (idx != null) _rebuildKey++;
+      if (ok) _rebuildKey++;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(idx != null
-            ? 'Face scanned — skin tone matched. Now make it yours!'
-            : 'No face detected. Try again in better lighting, or build manually.'),
-        backgroundColor: idx != null ? AppTheme.success : AppTheme.warning,
+        content: Text(ok
+            ? 'Face scanned — skin, hair & expression matched. Tweak the rest!'
+            : "Couldn't read the photo. Try again in better lighting, or build manually."),
+        backgroundColor: ok ? AppTheme.success : AppTheme.warning,
       ),
     );
   }
