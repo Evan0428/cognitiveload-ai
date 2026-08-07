@@ -4,7 +4,8 @@ import '../models/task_model.dart';
 import '../services/task_service.dart';
 
 /// Outcome of a manual task submission.
-enum SubmitResult { success, duplicate, invalid, error }
+/// `conflict` = the chosen time slot overlaps an existing task.
+enum SubmitResult { success, conflict, invalid, error }
 
 class AddTaskViewModel extends ChangeNotifier {
   final TaskService _taskService = TaskService();
@@ -89,20 +90,27 @@ class AddTaskViewModel extends ChangeNotifier {
       final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
       final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
 
-      // 🟢 查重：同名 + 同日期 + 同开始时间 = 完全相同的任务，拒绝重复添加。
-      // 只在“新增”时检查（编辑现有任务时跳过）。查询失败（如离线）则放行。
+      // 🟢 时段重叠拦截 (FR 3.1)：同一天里，只要新任务的时间区间和已有任务相交
+      // （新开始 < 旧结束 且 新结束 > 旧开始）就拒绝——不看名字，同一时段不能再放任务。
+      // 只在“新增”时检查（编辑现有任务时跳过）；查询失败（如离线）则放行。
       if (_editingTaskId == null) {
         try {
           final existing = await _taskService.getCurrentUserTasks();
-          final bool isDuplicate = existing.any((t) =>
-              t.name.trim().toLowerCase() == _taskName.trim().toLowerCase() &&
-              t.date.year == _selectedDate!.year &&
-              t.date.month == _selectedDate!.month &&
-              t.date.day == _selectedDate!.day &&
-              t.startTime == startStr);
-          if (isDuplicate) return SubmitResult.duplicate;
+          final int newStart = _startTime!.hour * 60 + _startTime!.minute;
+          final int newEnd = _endTime!.hour * 60 + _endTime!.minute;
+          final bool hasConflict = existing.any((t) {
+            if (t.date.year != _selectedDate!.year ||
+                t.date.month != _selectedDate!.month ||
+                t.date.day != _selectedDate!.day) {
+              return false; // different day → no conflict
+            }
+            final int s = _minutesOf(t.startTime);
+            final int e = _minutesOf(t.endTime);
+            return newStart < e && newEnd > s; // interval intersection
+          });
+          if (hasConflict) return SubmitResult.conflict;
         } catch (e) {
-          debugPrint("Duplicate check skipped (fetch failed): $e");
+          debugPrint("Conflict check skipped (fetch failed): $e");
         }
       }
 
@@ -131,6 +139,13 @@ class AddTaskViewModel extends ChangeNotifier {
       _isSaving = false;
       notifyListeners();
     }
+  }
+
+  /// Parses a stored "HH:mm" time string into minutes-of-day.
+  int _minutesOf(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length != 2) return 0;
+    return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
   }
 
   void _resetForm() {

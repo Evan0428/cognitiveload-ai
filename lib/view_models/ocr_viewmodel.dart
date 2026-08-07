@@ -78,12 +78,10 @@ class OcrViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Signature that uniquely identifies a task occurrence: same subject on the
-  /// same date at the same start time. Two tasks with the same signature are
-  /// the *same* class — impossible to hold twice — so the second is a duplicate.
-  String _signature(String subject, int y, int mo, int d, int h, int mi) {
-    final s = subject.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    return '$s|$y-$mo-$d|$h:$mi';
+  /// True when two time intervals intersect (start < otherEnd && end > otherStart).
+  /// Used to reject an OCR task that overlaps an already-scheduled commitment.
+  bool _overlaps(DateTime aStart, DateTime aEnd, DateTime bStart, DateTime bEnd) {
+    return aStart.isBefore(bEnd) && aEnd.isAfter(bStart);
   }
 
   /// 🟢 终极双流合并保存：云端备份 + 同步刷新本地 AppState 联动主页大圆圈
@@ -91,22 +89,20 @@ class OcrViewModel extends ChangeNotifier {
   Future<TaskSaveResult> saveAllTasksToFirebase(AppState globalState) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (_extractedTasks.isEmpty) {
-      return const TaskSaveResult(success: false, savedCount: 0, duplicates: []);
+      return const TaskSaveResult(success: false, savedCount: 0, conflicts: []);
     }
 
-    // Signatures of tasks already saved in the schedule.
-    final Set<String> existing = {
-      for (final e in globalState.events)
-        _signature(e.title, e.start.year, e.start.month, e.start.day,
-            e.start.hour, e.start.minute)
-    };
-    final Set<String> seenInBatch = {};
+    // Time intervals already occupied — existing schedule + tasks accepted so
+    // far in THIS import (so two overlapping OCR rows don't both get in).
+    final List<List<DateTime>> occupied = [
+      for (final e in globalState.events) [e.start, e.end]
+    ];
 
     try {
       final batch = FirebaseFirestore.instance.batch();
       int index = 0;
       int savedCount = 0;
-      final List<String> duplicates = [];
+      final List<String> conflicts = [];
 
       for (var task in _extractedTasks) {
         // --- 1. Date Parsing (Standardize to DateTime) ---
@@ -148,14 +144,17 @@ class OcrViewModel extends ChangeNotifier {
           if (p == 'am' && endHour == 12) endHour = 0;
         }
 
-        // --- 2b. Duplicate check (same subject + date + start time) ---
-        final sig = _signature(task.subject, taskDate.year, taskDate.month,
-            taskDate.day, startHour, startMin);
-        if (existing.contains(sig) || seenInBatch.contains(sig)) {
-          duplicates.add('${task.subject} — ${task.day} ${task.date} ${task.startTime}');
-          continue; // skip: this exact class is already scheduled
+        // --- 2b. Time-overlap check (FR 3.1) — skip if this slot clashes ---
+        final DateTime newStart =
+            DateTime(taskDate.year, taskDate.month, taskDate.day, startHour, startMin);
+        final DateTime newEnd =
+            DateTime(taskDate.year, taskDate.month, taskDate.day, endHour, endMin);
+        final bool clashes = occupied.any((iv) => _overlaps(newStart, newEnd, iv[0], iv[1]));
+        if (clashes) {
+          conflicts.add('${task.subject} — ${task.day} ${task.date} ${task.startTime}');
+          continue; // skip: this time slot is already occupied
         }
-        seenInBatch.add(sig);
+        occupied.add([newStart, newEnd]); // reserve the slot for the rest of the batch
 
         // --- 3. Normalization (HH:mm format for Firestore consistency) ---
         final String firestoreStart = "${startHour.toString().padLeft(2, '0')}:${startMin.toString().padLeft(2, '0')}";
@@ -186,8 +185,8 @@ class OcrViewModel extends ChangeNotifier {
         globalState.addEvent(ScheduleEvent(
           id: 'ocr_${taskDate.millisecondsSinceEpoch}_${task.subject.hashCode}_$index',
           title: task.subject,
-          start: DateTime(taskDate.year, taskDate.month, taskDate.day, startHour, startMin),
-          end: DateTime(taskDate.year, taskDate.month, taskDate.day, endHour, endMin),
+          start: newStart,
+          end: newEnd,
           intensity: mappedIntensity,
           source: 'ocr',
           cognitiveLoadScore: task.cognitiveLoadScore,
@@ -203,27 +202,27 @@ class OcrViewModel extends ChangeNotifier {
       return TaskSaveResult(
         success: true,
         savedCount: savedCount,
-        duplicates: duplicates,
+        conflicts: conflicts,
       );
     } catch (e) {
       debugPrint("Batch save & sync error: $e");
-      return const TaskSaveResult(success: false, savedCount: 0, duplicates: []);
+      return const TaskSaveResult(success: false, savedCount: 0, conflicts: []);
     }
   }
 }
 
-/// Outcome of a save: how many new tasks were stored and which were skipped as
-/// duplicates (already on the schedule, or repeated within the same import).
+/// Outcome of a save: how many new tasks were stored and which were skipped
+/// because their time slot overlapped an existing (or already-accepted) task.
 class TaskSaveResult {
   final bool success;
   final int savedCount;
-  final List<String> duplicates;
+  final List<String> conflicts;
 
   const TaskSaveResult({
     required this.success,
     required this.savedCount,
-    required this.duplicates,
+    required this.conflicts,
   });
 
-  bool get hasDuplicates => duplicates.isNotEmpty;
+  bool get hasConflicts => conflicts.isNotEmpty;
 }

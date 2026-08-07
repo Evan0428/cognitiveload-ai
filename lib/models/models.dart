@@ -6,7 +6,7 @@ enum TaskIntensity { low, medium, high, critical }
 
 extension TaskIntensityX on TaskIntensity {
   /// Numeric weight used in the workload-density calculation.
-  /// Higher = more cognitively demanding.
+  /// Highe= more cognitively demanding.
   double get weight {
     switch (this) {
       case TaskIntensity.low:

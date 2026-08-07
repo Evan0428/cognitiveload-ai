@@ -287,9 +287,9 @@ class AppState extends ChangeNotifier {
     final today = DateTime.now();
     final todayEvents = _events
         .where((event) =>
-            event.start.year == today.year &&
-            event.start.month == today.month &&
-            event.start.day == today.day)
+    event.start.year == today.year &&
+        event.start.month == today.month &&
+        event.start.day == today.day)
         .toList();
 
     // Always analyse — the engine still computes physiological readiness with
@@ -324,8 +324,8 @@ class AppState extends ChangeNotifier {
       _lastNotifiedLevel = null;
     }
 
-    // 🔴 Teammate's threshold-based alert (runs alongside Focus Lock logic)
-    _checkAndNotifyLoadThreat(r);
+      // 🔴 Build the Real Load Threat Alert function
+      _checkAndNotifyLoadThreat(r);
   }
 
   void _checkAndNotifyLoadThreat(CognitiveLoadResult r) {

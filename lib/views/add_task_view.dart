@@ -244,12 +244,12 @@ class _AddTaskViewState extends State<AddTaskView> {
 
                       if (!mounted) return;
 
-                      // 🟢 重复任务 → 橙色提示，不再重复添加
-                      if (result == SubmitResult.duplicate) {
+                      // 🟢 时段冲突 → 橙色提示，不添加
+                      if (result == SubmitResult.conflict) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                                '"$taskName" is already scheduled at that date & time — duplicate not added.'),
+                            content: const Text(
+                                'Time conflict: another task already occupies this time slot — not added.'),
                             backgroundColor: Colors.orange,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(

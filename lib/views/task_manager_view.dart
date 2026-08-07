@@ -316,9 +316,9 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                       await appState.syncTasksFromFirestore();
                       messenger.showSnackBar(const SnackBar(content: Text("Task successfully saved!")));
                       navigator.pop();
-                    } else if (result == SubmitResult.duplicate) {
+                    } else if (result == SubmitResult.conflict) {
                       messenger.showSnackBar(const SnackBar(
-                        content: Text('This task is already scheduled at that date & time — duplicate not added.'),
+                        content: Text('Time conflict: another task already occupies this time slot — not added.'),
                         backgroundColor: Colors.orange,
                       ));
                     } else {

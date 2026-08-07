@@ -203,16 +203,16 @@ class _ReviewEditViewState extends State<ReviewEditView> {
 
                   if (!context.mounted) return;
 
-                  // 🟢 有重复任务 → 先弹窗告知用户被跳过的项目
-                  if (result.hasDuplicates) {
-                    await _showDuplicatesDialog(context, result);
+                  // 🟢 有时段冲突的任务 → 先弹窗告知用户被跳过的项目
+                  if (result.hasConflicts) {
+                    await _showConflictsDialog(context, result);
                     if (!context.mounted) return;
                   }
 
                   if (result.success) {
                     final msg = result.savedCount > 0
                         ? '${result.savedCount} task(s) saved & load recalculated!'
-                        : 'No new tasks saved — all were already on your schedule.';
+                        : 'No new tasks saved — all clashed with existing time slots.';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(msg),
@@ -235,18 +235,18 @@ class _ReviewEditViewState extends State<ReviewEditView> {
     );
   }
 
-  /// Tells the user which extracted tasks were skipped because the exact same
-  /// class (same subject, date and start time) is already on their schedule.
-  Future<void> _showDuplicatesDialog(BuildContext context, TaskSaveResult result) {
+  /// Tells the user which extracted tasks were skipped because their time slot
+  /// overlaps a task already on the schedule (or another task in this import).
+  Future<void> _showConflictsDialog(BuildContext context, TaskSaveResult result) {
     return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.copy_all_rounded, color: Colors.orange),
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
             SizedBox(width: 8),
-            Expanded(child: Text('Duplicate tasks skipped', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            Expanded(child: Text('Time conflicts skipped', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
           ],
         ),
         content: Column(
@@ -254,7 +254,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${result.duplicates.length} task(s) were already on your schedule at the same date & time, so they were not added again:',
+              '${result.conflicts.length} task(s) overlapped a time slot already occupied on your schedule, so they were not added:',
               style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),
@@ -263,7 +263,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: result.duplicates
+                  children: result.conflicts
                       .map((d) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(

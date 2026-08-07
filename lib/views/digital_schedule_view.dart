@@ -171,24 +171,6 @@ class _DigitalScheduleViewState extends State<DigitalScheduleView> {
                         final int taskScore = IntensityClassifier.scoreFromTitle(_taskName);
                         final TaskIntensity intensity = TaskIntensityX.fromScore(taskScore);
 
-                        // 🟢 查重：同名 + 同日期 + 同开始时间 = 完全相同任务，拒绝重复
-                        final bool isDuplicate = appState.events.any((e) =>
-                            e.title.trim().toLowerCase() == _taskName.trim().toLowerCase() &&
-                            e.start.year == startDateTime.year &&
-                            e.start.month == startDateTime.month &&
-                            e.start.day == startDateTime.day &&
-                            e.start.hour == startDateTime.hour &&
-                            e.start.minute == startDateTime.minute);
-                        if (isDuplicate) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('This task is already scheduled at that date & time — duplicate not added.'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          return;
-                        }
-
                         final newEvent = ScheduleEvent(
                           id: 'manual_${DateTime.now().millisecondsSinceEpoch}',
                           title: _taskName,
@@ -199,6 +181,18 @@ class _DigitalScheduleViewState extends State<DigitalScheduleView> {
                           cognitiveLoadScore: taskScore,
                           ratingType: 'Automatic',
                         );
+
+                        // 🟢 时段重叠拦截 (FR 3.1)：只要时间和已有任务相交就拒绝，
+                        // 不看名字 —— 同一时段不允许再放任何任务。
+                        if (_checkIsOverlapping(newEvent, appState.events)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Time conflict: another task already occupies this time slot — not added.'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
                         appState.addEvent(newEvent);
                       } else {
                         // 编辑逻辑 (FR 3.2)：同样使用统一引擎更新强度
