@@ -440,7 +440,7 @@ class _SettingsViewState extends State<SettingsView> {
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF1E293B))),
                           SizedBox(height: 2),
-                          Text('Scan your face & customise your assistant',
+                          Text('Customise your assistant',
                               style: TextStyle(
                                   fontSize: 12, color: Color(0xFF64748B))),
                         ],
