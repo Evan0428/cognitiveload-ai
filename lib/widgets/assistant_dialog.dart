@@ -3,6 +3,7 @@ import 'package:fluttermoji/fluttermoji.dart';
 import '../services/assistant_service.dart';
 import '../services/cognitive_load_engine.dart';
 import '../theme/app_theme.dart';
+import 'typewriter_text.dart';
 
 /// Pops the avatar assistant into view with an entrance animation and speaks
 /// the advice immediately, with the text shown in a readable dialog.
@@ -99,11 +100,19 @@ class _AssistantDialogState extends State<_AssistantDialog>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Standing avatar with a soft glowing stage + talking pulse.
-                ScaleTransition(
-                  scale: Tween(begin: 1.0, end: 1.06).animate(
-                      CurvedAnimation(
-                          parent: _pulse, curve: Curves.easeInOut)),
+                // Standing avatar that playfully bobs + wobbles while talking.
+                AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (context, child) {
+                    final t = _pulse.value; // 0..1..0 (repeat reverse)
+                    return Transform.translate(
+                      offset: Offset(0, -10 * t), // bob up/down
+                      child: Transform.rotate(
+                        angle: (t - 0.5) * 0.16, // cheeky left/right wobble
+                        child: Transform.scale(scale: 1 + t * 0.05, child: child),
+                      ),
+                    );
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -137,10 +146,11 @@ class _AssistantDialogState extends State<_AssistantDialog>
                   ],
                 ),
                 const SizedBox(height: 12),
-                // The advice, easy to read.
-                Text(
+                // The advice, revealed word-by-word like a chat message.
+                TypewriterText(
                   _message,
                   textAlign: TextAlign.center,
+                  wordDelay: const Duration(milliseconds: 190),
                   style: const TextStyle(
                       fontSize: 16,
                       height: 1.45,
