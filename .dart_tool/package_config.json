@@ -8,6 +8,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "android_intent_plus",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/android_intent_plus-6.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
       "name": "archive",
       "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/archive-4.0.9",
       "packageUri": "lib/",
@@ -452,6 +458,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "model_viewer_plus",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/model_viewer_plus-1.10.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
       "name": "nested",
       "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/nested-1.0.0",
       "packageUri": "lib/",
@@ -656,6 +668,54 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "url_launcher",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher-6.3.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "url_launcher_android",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.32",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "url_launcher_ios",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_ios-6.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "url_launcher_linux",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_linux-3.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "url_launcher_macos",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_macos-3.2.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "url_launcher_platform_interface",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_platform_interface-2.3.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
+      "name": "url_launcher_web",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_web-2.4.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "url_launcher_windows",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/url_launcher_windows-3.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "uuid",
       "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/uuid-4.6.0",
       "packageUri": "lib/",
@@ -696,6 +756,30 @@
       "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/web-1.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "webview_flutter",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/webview_flutter-4.14.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "webview_flutter_android",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/webview_flutter_android-4.13.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "webview_flutter_platform_interface",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/webview_flutter_platform_interface-2.15.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "webview_flutter_wkwebview",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/webview_flutter_wkwebview-3.26.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
     },
     {
       "name": "win32",

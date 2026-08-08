@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fluttermoji/fluttermoji.dart';
 import '../services/app_state.dart';
 import '../services/assistant_service.dart';
 import '../services/cognitive_load_engine.dart';
 import '../theme/app_theme.dart';
+import 'avatar_view.dart';
 
 /// The avatar assistant: shows the user's avatar with a speech bubble of
 /// rule-based advice, and speaks it (flutter_tts). Auto-speaks when the load
@@ -77,16 +77,16 @@ class _AssistantBubbleState extends State<AssistantBubble> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
+          padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
                 color: widget.onGradient ? Colors.white : AppTheme.line,
                 width: 2),
           ),
-          child: FluttermojiCircleAvatar(
-              radius: 26,
-              backgroundColor:
-                  widget.onGradient ? Colors.white : AppTheme.surfaceAlt),
+          child: AvatarView(
+              size: 48,
+              background: widget.onGradient ? Colors.white : AppTheme.surfaceAlt),
         ),
         const SizedBox(width: 12),
         Expanded(

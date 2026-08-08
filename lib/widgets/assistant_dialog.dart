@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fluttermoji/fluttermoji.dart';
 import '../services/assistant_service.dart';
 import '../services/cognitive_load_engine.dart';
 import '../theme/app_theme.dart';
+import 'avatar_view.dart';
 import 'typewriter_text.dart';
 
 /// Pops the avatar assistant into view with an entrance animation and speaks
@@ -39,20 +39,14 @@ class _AssistantDialog extends StatefulWidget {
   State<_AssistantDialog> createState() => _AssistantDialogState();
 }
 
-class _AssistantDialogState extends State<_AssistantDialog>
-    with SingleTickerProviderStateMixin {
+class _AssistantDialogState extends State<_AssistantDialog> {
   final AssistantService _assistant = AssistantService();
-  late final AnimationController _pulse;
   late final String _message;
 
   @override
   void initState() {
     super.initState();
     _message = _assistant.messageFor(widget.result, name: widget.name);
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
     // Speak immediately on appearance.
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _assistant.speak(_message));
@@ -61,7 +55,6 @@ class _AssistantDialogState extends State<_AssistantDialog>
   @override
   void dispose() {
     _assistant.stop();
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -100,35 +93,24 @@ class _AssistantDialogState extends State<_AssistantDialog>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Standing avatar that playfully bobs + wobbles while talking.
-                AnimatedBuilder(
-                  animation: _pulse,
-                  builder: (context, child) {
-                    final t = _pulse.value; // 0..1..0 (repeat reverse)
-                    return Transform.translate(
-                      offset: Offset(0, -10 * t), // bob up/down
-                      child: Transform.rotate(
-                        angle: (t - 0.5) * 0.16, // cheeky left/right wobble
-                        child: Transform.scale(scale: 1 + t * 0.05, child: child),
-                      ),
-                    );
-                  },
+                // Standing 3D avatar (auto-rotates) on a soft glowing stage.
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(colors: [
+                      _accent.withValues(alpha: 0.22),
+                      _accent.withValues(alpha: 0.0),
+                    ]),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [
-                        _accent.withValues(alpha: 0.22),
-                        _accent.withValues(alpha: 0.0),
-                      ]),
+                      border: Border.all(color: _accent, width: 3),
                     ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _accent, width: 3),
-                      ),
-                      child: FluttermojiCircleAvatar(
-                          radius: 58, backgroundColor: AppTheme.surfaceAlt),
+                    child: const ClipOval(
+                      child: AvatarView(size: 150, threeD: true),
                     ),
                   ),
                 ),

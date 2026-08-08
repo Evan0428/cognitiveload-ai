@@ -37,9 +37,11 @@ dependencies:
   cloud_firestore: ^5.1.0                   # Module 1: 存储 Profile 类别和阈值
 
   # ---- Virtual Avatar Assistant (Chua Yi Zhe) ----
-  fluttermoji: ^1.0.2                        # Customizable cartoon avatar + editor
+  fluttermoji: ^1.0.2                        # Cartoon avatar (fallback before RPM is set)
   flutter_tts: ^4.2.5                        # Assistant voice (text-to-speech)
-  get: ^4.7.3
+  get: ^4.7.3                                # fluttermoji state
+  webview_flutter: ^4.14.1                   # Ready Player Me 3D avatar builder
+  model_viewer_plus: ^1.10.0                # Render the RPM .glb 3D model
 
 dev_dependencies:
   flutter_test:

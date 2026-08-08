@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'avatar_creator_view.dart';
+import 'rpm_creator_view.dart';
 
 class SetupProfileView extends StatefulWidget {
   const SetupProfileView({super.key});
@@ -255,11 +255,11 @@ class _SetupProfileViewState extends State<SetupProfileView> {
         );
 
         if (!mounted) return;
-        // 🟢 Final onboarding step: create the virtual avatar before starting.
+        // 🟢 Final onboarding step: create the 3D avatar before starting.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (_) => const AvatarCreatorView(onboarding: true)),
+              builder: (_) => const RpmCreatorView(onboarding: true)),
         );
       }
     } catch (e) {

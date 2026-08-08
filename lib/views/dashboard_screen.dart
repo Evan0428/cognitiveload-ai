@@ -7,17 +7,18 @@ import '../services/cognitive_load_engine.dart';
 import '../view_models/add_task_viewmodel.dart'; 
 import '../models/task_model.dart';
 import '../models/models.dart';
-import 'package:fluttermoji/fluttermoji.dart';
 import '../services/avatar_service.dart';
+import '../services/rpm_service.dart';
 import '../widgets/assistant_bubble.dart';
 import '../widgets/assistant_dialog.dart';
+import '../widgets/avatar_view.dart';
+import 'rpm_creator_view.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
 import 'scan_timetable_view.dart';
 import 'analytics_view.dart';
 import 'wellbeing_screen.dart';
-import 'avatar_creator_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -35,7 +36,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchUserNameFromFirestore();
-    // Restore the user's saved avatar from Firestore (cross-device).
+    // Restore the user's saved avatars (3D RPM primary, cartoon fallback).
+    RpmService().load();
     AvatarService().loadFromCloud();
   }
 
@@ -237,7 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onTap: () async {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const AvatarCreatorView()),
+                          MaterialPageRoute(builder: (_) => const RpmCreatorView()),
                         );
                         if (mounted) setState(() {});
                       },
@@ -247,10 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: FluttermojiCircleAvatar(
-                          radius: 24,
-                          backgroundColor: Colors.white,
-                        ),
+                        child: const AvatarView(size: 48, background: Colors.white),
                       ),
                     ),
                   ],

@@ -5,11 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:fluttermoji/fluttermoji.dart';
-
 import '../services/app_state.dart';
 import '../services/task_service.dart';
-import 'avatar_creator_view.dart';
+import '../widgets/avatar_view.dart';
+import 'rpm_creator_view.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -427,20 +426,19 @@ class _SettingsViewState extends State<SettingsView> {
               _buildCardContainer(
                 child: Row(
                   children: [
-                    FluttermojiCircleAvatar(
-                        radius: 30, backgroundColor: const Color(0xFFF1F5F9)),
+                    const AvatarView(size: 60),
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('My Virtual Avatar',
+                          Text('My 3D Avatar',
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF1E293B))),
                           SizedBox(height: 2),
-                          Text('Customise your assistant',
+                          Text('Build & customise your 3D assistant',
                               style: TextStyle(
                                   fontSize: 12, color: Color(0xFF64748B))),
                         ],
@@ -456,7 +454,7 @@ class _SettingsViewState extends State<SettingsView> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const AvatarCreatorView()),
+                              builder: (_) => const RpmCreatorView()),
                         );
                         if (mounted) setState(() {});
                       },
