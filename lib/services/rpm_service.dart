@@ -39,6 +39,22 @@ class RpmService {
       emoji: '🧑‍🚀',
       url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     ),
+    (
+      name: 'Dancer',
+      emoji: '🕺',
+      url: 'https://threejs.org/examples/models/gltf/Xbot.glb',
+    ),
+    (
+      name: 'Walker',
+      emoji: '🚶',
+      url:
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
+    ),
+    (
+      name: 'Buddy',
+      emoji: '🐴',
+      url: 'https://modelviewer.dev/shared-assets/models/Horse.glb',
+    ),
   ];
 
   /// The 3D model shown when the user hasn't made a personalised avatar yet,

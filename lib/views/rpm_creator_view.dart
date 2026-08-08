@@ -67,10 +67,13 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                   fontWeight: FontWeight.bold,
                   color: AppTheme.ink)),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              for (final c in RpmService.characters) ...[
-                Expanded(
+              for (final c in RpmService.characters)
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 40 - 24) / 3,
                   child: _CharacterTile(
                     emoji: c.emoji,
                     name: c.name,
@@ -81,13 +84,11 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
-              ],
             ],
           ),
           const SizedBox(height: 28),
 
-          const Text('Or build a 3D avatar that looks like you',
+          const Text('Personalised 3D avatar',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -123,17 +124,17 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                   Row(children: [
                     Icon(Icons.info_outline, size: 18, color: AppTheme.warning),
                     SizedBox(width: 8),
-                    Text('Personalised builder not configured',
+                    Text('Currently unavailable',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, color: AppTheme.ink)),
                   ]),
                   SizedBox(height: 8),
                   Text(
-                    'Ready Player Me needs your own free subdomain.\n'
-                    '1. Sign up free at studio.readyplayer.me\n'
-                    '2. Copy your subdomain (e.g. "cognitiveload")\n'
-                    '3. Paste it into RpmService.subdomain in the code\n\n'
-                    'Until then, the 3D characters above work perfectly.',
+                    'The external avatar-builder service (Ready Player Me) is '
+                    'not reachable, so a "looks like you" avatar can\'t be '
+                    'generated right now.\n\n'
+                    'The 3D characters above are fully animated and work '
+                    'offline-safe — pick one as your assistant.',
                     style: TextStyle(fontSize: 12, color: AppTheme.inkSoft, height: 1.5),
                   ),
                 ],
