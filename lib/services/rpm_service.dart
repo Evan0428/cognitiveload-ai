@@ -61,6 +61,13 @@ class RpmService {
   /// so the assistant is ALWAYS 3D rather than falling back to a flat cartoon.
   static String get defaultCharacterUrl => characters.first.url;
 
+  /// The 3D model to render right now — the user's pick, else the default.
+  /// Never null, so the app is 3D everywhere (no flat-cartoon fallback).
+  static String get effectiveUrl {
+    final u = avatarUrl.value;
+    return (u != null && u.isNotEmpty) ? u : defaultCharacterUrl;
+  }
+
   /// Reactive current avatar `.glb` URL (null = user hasn't made one → the app
   /// falls back to the fluttermoji cartoon).
   static final ValueNotifier<String?> avatarUrl = ValueNotifier<String?>(null);

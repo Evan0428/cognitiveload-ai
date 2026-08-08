@@ -12,6 +12,7 @@ import '../services/rpm_service.dart';
 import '../widgets/assistant_bubble.dart';
 import '../widgets/assistant_dialog.dart';
 import '../widgets/avatar_view.dart';
+import '../widgets/standing_avatar.dart';
 import 'rpm_creator_view.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
@@ -157,9 +158,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: null,
       backgroundColor: const Color(0xFFF8FAFC),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
+      body: Stack(
+        children: [
+          IndexedStack(index: _currentIndex, children: _tabs),
+          // 🧍 The 3D assistant stands free over the UI on every tab.
+          const Positioned(
+            right: 6,
+            bottom: 6,
+            child: SafeArea(child: StandingAvatar()),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

@@ -4,7 +4,6 @@ import '../services/app_state.dart';
 import '../services/assistant_service.dart';
 import '../services/cognitive_load_engine.dart';
 import '../theme/app_theme.dart';
-import 'avatar_view.dart';
 
 /// The avatar assistant: shows the user's avatar with a speech bubble of
 /// rule-based advice, and speaks it (flutter_tts). Auto-speaks when the load
@@ -42,7 +41,7 @@ class _AssistantBubbleState extends State<AssistantBubble> {
 
     final escalated =
         (r.level == LoadLevel.high || r.level == LoadLevel.overload) &&
-            (prev == null || r.level.index > prev.index);
+            r.level.index > prev.index;
     final workloadOver =
         (prev == LoadLevel.high || prev == LoadLevel.overload) &&
             r.level == LoadLevel.safe;
@@ -76,17 +75,18 @@ class _AssistantBubbleState extends State<AssistantBubble> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // No avatar here — the free-standing 3D character (StandingAvatar)
+        // is the assistant's face; this is just its message.
         Container(
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(
-                color: widget.onGradient ? Colors.white : AppTheme.line,
-                width: 2),
+            color: (widget.onGradient ? Colors.white : AppTheme.indigo)
+                .withValues(alpha: 0.14),
           ),
-          child: AvatarView(
-              size: 48,
-              background: widget.onGradient ? Colors.white : AppTheme.surfaceAlt),
+          child: Icon(Icons.record_voice_over_rounded,
+              size: 22,
+              color: widget.onGradient ? Colors.white : AppTheme.indigo),
         ),
         const SizedBox(width: 12),
         Expanded(
