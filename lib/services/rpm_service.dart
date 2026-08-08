@@ -12,6 +12,39 @@ import 'package:shared_preferences/shared_preferences.dart';
 class RpmService {
   static const _prefsKey = 'rpmAvatarUrl';
 
+  /// Your Ready Player Me subdomain for the personalised 3D avatar builder.
+  ///
+  /// ⚠️ RPM retired the old public `demo` subdomain, so you must create your
+  /// own FREE one at https://studio.readyplayer.me (no card needed) and put it
+  /// here — e.g. 'cognitiveload'. Until then the builder shows a friendly
+  /// notice and the user can pick a ready-made 3D character instead.
+  static const String subdomain = ''; // ← paste your free subdomain here
+
+  static bool get hasSubdomain => subdomain.trim().isNotEmpty;
+
+  static String get builderUrl =>
+      'https://${subdomain.trim()}.readyplayer.me/avatar?frameApi';
+
+  /// Ready-made 3D characters (Google's public model-viewer sample assets).
+  /// These need no account and work immediately — used as the default 3D
+  /// assistant and offered as a picker.
+  static const List<({String name, String url, String emoji})> characters = [
+    (
+      name: 'Robo',
+      emoji: '🤖',
+      url: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    ),
+    (
+      name: 'Astro',
+      emoji: '🧑‍🚀',
+      url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    ),
+  ];
+
+  /// The 3D model shown when the user hasn't made a personalised avatar yet,
+  /// so the assistant is ALWAYS 3D rather than falling back to a flat cartoon.
+  static String get defaultCharacterUrl => characters.first.url;
+
   /// Reactive current avatar `.glb` URL (null = user hasn't made one → the app
   /// falls back to the fluttermoji cartoon).
   static final ValueNotifier<String?> avatarUrl = ValueNotifier<String?>(null);
@@ -59,7 +92,10 @@ class RpmService {
   /// RPM's free 2D portrait render for a `.glb` URL, e.g.
   /// https://models.readyplayer.me/<id>.glb → https://models.readyplayer.me/<id>.png
   static String? portraitUrl(String? glbUrl, {int size = 256}) {
-    if (glbUrl == null || !glbUrl.endsWith('.glb')) return null;
+    // Only Ready Player Me models have a matching 2D portrait render.
+    if (glbUrl == null ||
+        !glbUrl.endsWith('.glb') ||
+        !glbUrl.contains('readyplayer.me')) return null;
     final png = glbUrl.substring(0, glbUrl.length - 4);
     return '$png.png?size=$size';
   }
