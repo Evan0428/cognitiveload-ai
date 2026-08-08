@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,10 +11,7 @@ import '../models/models.dart';
 import '../services/avatar_service.dart';
 import '../services/rpm_service.dart';
 import '../widgets/assistant_bubble.dart';
-import '../widgets/assistant_dialog.dart';
-import '../widgets/avatar_view.dart';
 import '../widgets/standing_avatar.dart';
-import 'rpm_creator_view.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
@@ -31,7 +29,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   String _realName = '...';
-  bool _greeted = false; // assistant auto-greets once per app open
+  String? _avatarBase64; // user's uploaded profile photo
 
   @override
   void initState() {
@@ -56,11 +54,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = userDoc.data() as Map<String, dynamic>;
         setState(() {
           _realName = data['name'] ?? 'User';
+          _avatarBase64 = data['avatarBase64'] as String?;
         });
       }
     } catch (e) {
       debugPrint("Error fetching user name: $e");
     }
+  }
+
+  /// Top-right = the USER's profile picture (photo they uploaded in Settings),
+  /// not the 3D assistant character. Falls back to their initial.
+  Widget _buildProfilePicture() {
+    ImageProvider? image;
+    if (_avatarBase64 != null && _avatarBase64!.isNotEmpty) {
+      try {
+        image = MemoryImage(base64Decode(_avatarBase64!));
+      } catch (_) {
+        image = null;
+      }
+    }
+    final initial =
+        (_realName.isNotEmpty && _realName != '...') ? _realName[0].toUpperCase() : '?';
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.white,
+      backgroundImage: image,
+      child: image == null
+          ? Text(initial,
+              style: const TextStyle(
+                  color: Color(0xFF6366F1),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20))
+          : null,
+    );
   }
 
   Color _levelColor(LoadLevel level) => switch (level) {
@@ -134,17 +160,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Color(0xFFF8FAFC),
         body: Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
       );
-    }
-
-    // 🗣️ On app open, the avatar assistant pops out and speaks its advice.
-    if (!_greeted) {
-      _greeted = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showAssistantDialog(context,
-              result: r, name: state.userProfile?.name);
-        }
-      });
     }
 
     final List<Widget> _tabs = [
@@ -247,9 +262,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onTap: () async {
                         await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const RpmCreatorView()),
+                          MaterialPageRoute(builder: (_) => const SettingsView()),
                         );
-                        if (mounted) setState(() {});
+                        if (mounted) _fetchUserNameFromFirestore();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(2),
@@ -257,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const AvatarView(size: 48, background: Colors.white),
+                        child: _buildProfilePicture(),
                       ),
                     ),
                   ],

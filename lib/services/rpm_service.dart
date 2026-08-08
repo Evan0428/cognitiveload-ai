@@ -40,20 +40,27 @@ class RpmService {
       url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     ),
     (
-      name: 'Dancer',
-      emoji: '🕺',
-      url: 'https://threejs.org/examples/models/gltf/Xbot.glb',
+      name: 'Foxy',
+      emoji: '🦊',
+      url:
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Fox/glTF-Binary/Fox.glb',
     ),
     (
-      name: 'Walker',
-      emoji: '🚶',
+      name: 'Kiwi',
+      emoji: '🦜',
+      url: 'https://threejs.org/examples/models/gltf/Parrot.glb',
+    ),
+    (
+      name: 'Ducky',
+      emoji: '🦆',
       url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Duck/glTF-Binary/Duck.glb',
     ),
     (
       name: 'Buddy',
-      emoji: '🐴',
-      url: 'https://modelviewer.dev/shared-assets/models/Horse.glb',
+      emoji: '🤖',
+      url:
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem.glb',
     ),
   ];
 

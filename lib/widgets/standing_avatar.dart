@@ -20,6 +20,7 @@ class StandingAvatar extends StatefulWidget {
 class _StandingAvatarState extends State<StandingAvatar> {
   final AssistantService _assistant = AssistantService();
   bool _talking = false;
+  bool _greeted = false;
 
   @override
   void dispose() {
@@ -28,8 +29,19 @@ class _StandingAvatarState extends State<StandingAvatar> {
   }
 
   Future<void> _talk(String message) async {
+    if (!mounted) return;
     setState(() => _talking = true);
     await _assistant.speak(message);
+  }
+
+  /// On app open the character pops its own chat bubble out and starts
+  /// talking — no modal dialog, just the character speaking to you.
+  void _greetOnce(String message) {
+    if (_greeted) return;
+    _greeted = true;
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) _talk(message);
+    });
   }
 
   @override
@@ -40,14 +52,24 @@ class _StandingAvatarState extends State<StandingAvatar> {
 
     final message =
         _assistant.messageFor(r, name: state.userProfile?.name);
+    _greetOnce(message);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Speech bubble appears above the character while it talks.
+        // Speech bubble pops out of the character, anime-style.
         if (_talking)
-          Container(
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.elasticOut,
+            builder: (context, t, child) => Transform.scale(
+              scale: 0.6 + t * 0.4,
+              alignment: Alignment.bottomRight, // grows out of the character
+              child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
+            ),
+            child: Container(
             constraints: const BoxConstraints(maxWidth: 240),
             margin: const EdgeInsets.only(bottom: 6, right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -87,6 +109,7 @@ class _StandingAvatarState extends State<StandingAvatar> {
                 ),
               ],
             ),
+          ),
           ),
 
         // The character itself, standing on a soft shadow.
