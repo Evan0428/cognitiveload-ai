@@ -66,3 +66,4 @@ flutter:
   assets:
     - assets/images/CognitiveLoadAI-logo.png
     - assets/icon/app_icon.png
+    - assets/models/   # cute chibi 3D assistants (bundled, work offline)

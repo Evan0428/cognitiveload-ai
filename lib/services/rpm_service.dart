@@ -52,12 +52,13 @@ class RpmService {
       voice: null,
       locale: 'en-US',
     ),
+    // ---- Bundled chibi cast: cute, short, one consistent cartoon style.
+    // Local assets → no network needed, so they always load. ----
     (
       name: 'Nova',
       emoji: '🦾',
-      persona: 'Calm android',
-      url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem.glb',
+      persona: 'Calm robot',
+      url: 'assets/models/nova.glb',
       pitch: 0.72, // deep, machine-like
       rate: 0.40,
       voice: null,
@@ -67,7 +68,7 @@ class RpmService {
       name: 'Astro',
       emoji: '🧑‍🚀',
       persona: 'Steady explorer',
-      url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+      url: 'assets/models/astro.glb',
       pitch: 1.0,
       rate: 0.45,
       voice: 'Daniel', // British male on iOS
@@ -75,9 +76,9 @@ class RpmService {
     ),
     (
       name: 'Mia',
-      emoji: '👩',
+      emoji: '👧',
       persona: 'Warm coach',
-      url: 'https://threejs.org/examples/models/gltf/Michelle.glb',
+      url: 'assets/models/mia.glb',
       pitch: 1.15,
       rate: 0.48,
       voice: 'Samantha', // US female on iOS
@@ -87,20 +88,19 @@ class RpmService {
       name: 'Leo',
       emoji: '🧑',
       persona: 'Friendly buddy',
-      // Real male human model (textured, walk-animated).
-      url: 'https://threejs.org/examples/models/gltf/Soldier.glb',
+      url: 'assets/models/leo.glb',
       pitch: 0.95,
       rate: 0.47,
       voice: 'Karen', // AU voice on iOS
       locale: 'en-AU',
     ),
     (
-      name: 'Max',
-      emoji: '🕴️',
-      persona: 'Focused mentor',
-      url: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
-      pitch: 0.85, // firm and low
-      rate: 0.43,
+      name: 'Buddy',
+      emoji: '🧒',
+      persona: 'Cheerful pal',
+      url: 'assets/models/buddy.glb',
+      pitch: 1.25,
+      rate: 0.48,
       voice: null,
       locale: 'en-US',
     ),
