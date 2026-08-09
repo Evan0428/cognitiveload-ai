@@ -13,6 +13,10 @@ class AvatarView extends StatelessWidget {
   final bool circle;
   final Color? background;
 
+  /// Let the user drag to rotate the model (editor preview). Off elsewhere so
+  /// taps reach the widget instead of being eaten by the 3D view.
+  final bool allowSpin;
+
   /// Kept for call-site compatibility; every avatar is 3D now.
   final bool threeD;
 
@@ -21,6 +25,7 @@ class AvatarView extends StatelessWidget {
     this.size = 56,
     this.circle = true,
     this.background,
+    this.allowSpin = false,
     this.threeD = true,
   });
 
@@ -37,7 +42,7 @@ class AvatarView extends StatelessWidget {
           src: src,
           alt: 'Your 3D avatar',
           autoRotate: !circle, // free-standing character slowly turns
-          cameraControls: !circle, // drag-to-spin only when free-standing
+          cameraControls: allowSpin, // drag-to-spin only in the editor preview
           disableZoom: true,
           autoPlay: true, // play the model's built-in animation
           // RPM avatars are full-body → frame head/shoulders for profile pics.

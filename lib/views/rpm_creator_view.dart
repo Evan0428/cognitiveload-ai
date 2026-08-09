@@ -59,7 +59,8 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                   AppTheme.indigo.withValues(alpha: 0.0),
                 ]),
               ),
-              child: const AvatarView(size: 220, threeD: true),
+              child: const AvatarView(
+                  size: 220, circle: false, allowSpin: true),
             ),
           ),
           const SizedBox(height: 8),

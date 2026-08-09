@@ -84,10 +84,11 @@ class RpmService {
       locale: 'en-US',
     ),
     (
-      name: 'Alex',
-      emoji: '🧍',
+      name: 'Leo',
+      emoji: '🧑',
       persona: 'Friendly buddy',
-      url: 'https://threejs.org/examples/models/gltf/Xbot.glb',
+      url:
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
       pitch: 0.95,
       rate: 0.47,
       voice: 'Karen', // AU voice on iOS
