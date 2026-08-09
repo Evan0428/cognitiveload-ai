@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../services/assistant_service.dart';
 import '../services/rpm_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_view.dart';
 
-/// 3D avatar setup (Chua Yi Zhe).
+/// 3D assistant setup (Chua Yi Zhe).
 ///
-/// Two paths:
-///  • Pick a ready-made 3D character — always works, no account, offline-safe.
-///  • Build a personalised 3D avatar in Ready Player Me — only when a free
-///    subdomain is configured in [RpmService.subdomain] (RPM retired the old
-///    public demo subdomain, so without one the builder URL doesn't exist).
+/// The user picks a standing human/robot character; each one has its own voice
+/// and greets in it when tapped. Shown as an onboarding step and re-openable
+/// from Settings.
 class RpmCreatorView extends StatefulWidget {
   final bool onboarding;
   const RpmCreatorView({super.key, this.onboarding = false});
@@ -99,60 +96,6 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                 ),
             ],
           ),
-          const SizedBox(height: 28),
-
-          const Text('Personalised 3D avatar',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.ink)),
-          const SizedBox(height: 8),
-          if (RpmService.hasSubdomain)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.face_retouching_natural),
-                label: const Text('Open Avatar Builder'),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const _RpmBuilderPage()),
-                  );
-                  if (mounted) setState(() {});
-                },
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.warning.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border:
-                    Border.all(color: AppTheme.warning.withValues(alpha: 0.4)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Icon(Icons.info_outline, size: 18, color: AppTheme.warning),
-                    SizedBox(width: 8),
-                    Text('Currently unavailable',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: AppTheme.ink)),
-                  ]),
-                  SizedBox(height: 8),
-                  Text(
-                    'The external avatar-builder service (Ready Player Me) is '
-                    'not reachable, so a "looks like you" avatar can\'t be '
-                    'generated right now.\n\n'
-                    'The 3D characters above are fully animated and work '
-                    'offline-safe — pick one as your assistant.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.inkSoft, height: 1.5),
-                  ),
-                ],
-              ),
-            ),
           const SizedBox(height: 24),
           if (widget.onboarding)
             SizedBox(
@@ -231,121 +174,3 @@ class _CharacterTile extends StatelessWidget {
   }
 }
 
-/// The Ready Player Me builder in a WebView (only reachable when a subdomain
-/// is configured). Reports load failures instead of hanging on a blank page.
-class _RpmBuilderPage extends StatefulWidget {
-  const _RpmBuilderPage();
-
-  @override
-  State<_RpmBuilderPage> createState() => _RpmBuilderPageState();
-}
-
-class _RpmBuilderPageState extends State<_RpmBuilderPage> {
-  final RpmService _service = RpmService();
-  late final WebViewController _controller;
-  bool _loading = true;
-  bool _saved = false;
-  String? _error;
-
-  static const _bridgeJs = '''
-    (function(){
-      function receive(event){
-        var data = event.data;
-        try { if (typeof data === 'string') data = JSON.parse(data); } catch(e){ return; }
-        if (!data || data.source !== 'readyplayerme') return;
-        if (data.eventName === 'v1.frame.ready') {
-          window.postMessage(JSON.stringify({
-            target: 'readyplayerme', type: 'subscribe', eventName: 'v1.**'
-          }), '*');
-        }
-        if (data.eventName === 'v1.avatar.exported') {
-          FlutterRPM.postMessage(data.data.url);
-        }
-      }
-      window.addEventListener('message', receive);
-      document.addEventListener('message', receive);
-    })();
-  ''';
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(AppTheme.background)
-      ..addJavaScriptChannel('FlutterRPM',
-          onMessageReceived: (m) => _onExported(m.message))
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) {
-          _controller.runJavaScript(_bridgeJs);
-          if (mounted) setState(() => _loading = false);
-        },
-        onWebResourceError: (err) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-              _error = err.description;
-            });
-          }
-        },
-      ))
-      ..loadRequest(Uri.parse(RpmService.builderUrl));
-  }
-
-  Future<void> _onExported(String url) async {
-    if (_saved || !url.endsWith('.glb')) return;
-    _saved = true;
-    await _service.save(url);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Your 3D avatar is ready!'),
-          backgroundColor: AppTheme.success),
-    );
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Avatar Builder')),
-      body: Stack(
-        children: [
-          if (_error == null) WebViewWidget(controller: _controller),
-          if (_error != null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded,
-                        size: 44, color: AppTheme.inkFaint),
-                    const SizedBox(height: 12),
-                    const Text("Couldn't load the avatar builder",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Check your internet and that RpmService.subdomain is a '
-                      'valid Ready Player Me subdomain.\n\n$_error',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.inkSoft, height: 1.4),
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Use a 3D character instead'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (_loading && _error == null)
-            const Center(child: CircularProgressIndicator(color: AppTheme.indigo)),
-        ],
-      ),
-    );
-  }
-}
