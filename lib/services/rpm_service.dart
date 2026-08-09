@@ -28,41 +28,94 @@ class RpmService {
   /// Ready-made 3D characters (Google's public model-viewer sample assets).
   /// These need no account and work immediately — used as the default 3D
   /// assistant and offered as a picker.
-  static const List<({String name, String url, String emoji})> characters = [
+  /// Standing human / robot assistants — each with its own voice character
+  /// ([pitch]/[rate] shape the delivery; [voice]+[locale] request a specific
+  /// system voice when the device has it, otherwise pitch/rate still apply).
+  static const List<
+      ({
+        String name,
+        String url,
+        String emoji,
+        String persona,
+        double pitch,
+        double rate,
+        String? voice,
+        String locale,
+      })> characters = [
     (
       name: 'Robo',
       emoji: '🤖',
+      persona: 'Cheerful robot',
       url: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+      pitch: 1.35, // bright, upbeat robot
+      rate: 0.46,
+      voice: null,
+      locale: 'en-US',
+    ),
+    (
+      name: 'Nova',
+      emoji: '🦾',
+      persona: 'Calm android',
+      url:
+          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem.glb',
+      pitch: 0.72, // deep, machine-like
+      rate: 0.40,
+      voice: null,
+      locale: 'en-US',
     ),
     (
       name: 'Astro',
       emoji: '🧑‍🚀',
+      persona: 'Steady explorer',
       url: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+      pitch: 1.0,
+      rate: 0.45,
+      voice: 'Daniel', // British male on iOS
+      locale: 'en-GB',
     ),
     (
-      name: 'Foxy',
-      emoji: '🦊',
-      url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Fox/glTF-Binary/Fox.glb',
+      name: 'Mia',
+      emoji: '👩',
+      persona: 'Warm coach',
+      url: 'https://threejs.org/examples/models/gltf/Michelle.glb',
+      pitch: 1.15,
+      rate: 0.48,
+      voice: 'Samantha', // US female on iOS
+      locale: 'en-US',
     ),
     (
-      name: 'Kiwi',
-      emoji: '🦜',
-      url: 'https://threejs.org/examples/models/gltf/Parrot.glb',
+      name: 'Alex',
+      emoji: '🧍',
+      persona: 'Friendly buddy',
+      url: 'https://threejs.org/examples/models/gltf/Xbot.glb',
+      pitch: 0.95,
+      rate: 0.47,
+      voice: 'Karen', // AU voice on iOS
+      locale: 'en-AU',
     ),
     (
-      name: 'Ducky',
-      emoji: '🦆',
-      url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Duck/glTF-Binary/Duck.glb',
-    ),
-    (
-      name: 'Buddy',
-      emoji: '🤖',
-      url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/BrainStem/glTF-Binary/BrainStem.glb',
+      name: 'Max',
+      emoji: '🕴️',
+      persona: 'Focused mentor',
+      url: 'https://threejs.org/examples/models/gltf/Soldier.glb',
+      pitch: 0.85, // firm and low
+      rate: 0.43,
+      voice: null,
+      locale: 'en-US',
     ),
   ];
+
+  /// Voice settings for the character the user currently has selected.
+  static ({double pitch, double rate, String? voice, String locale})
+      get currentVoice {
+    final url = effectiveUrl;
+    for (final c in characters) {
+      if (c.url == url) {
+        return (pitch: c.pitch, rate: c.rate, voice: c.voice, locale: c.locale);
+      }
+    }
+    return (pitch: 1.0, rate: 0.46, voice: null, locale: 'en-US');
+  }
 
   /// The 3D model shown when the user hasn't made a personalised avatar yet,
   /// so the assistant is ALWAYS 3D rather than falling back to a flat cartoon.

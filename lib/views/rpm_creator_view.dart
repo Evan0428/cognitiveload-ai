@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import '../services/assistant_service.dart';
 import '../services/rpm_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_view.dart';
@@ -21,6 +22,13 @@ class RpmCreatorView extends StatefulWidget {
 
 class _RpmCreatorViewState extends State<RpmCreatorView> {
   final RpmService _service = RpmService();
+  final AssistantService _assistant = AssistantService();
+
+  @override
+  void dispose() {
+    _assistant.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,10 +85,14 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                   child: _CharacterTile(
                     emoji: c.emoji,
                     name: c.name,
-                    selected: RpmService.avatarUrl.value == c.url,
+                    persona: c.persona,
+                    selected: RpmService.effectiveUrl == c.url,
                     onTap: () async {
                       await _service.save(c.url);
                       if (mounted) setState(() {});
+                      // Greet in this character's own voice so you can hear it.
+                      _assistant.speak(
+                          "Hi, I'm ${c.name}, your ${c.persona.toLowerCase()}.");
                     },
                   ),
                 ),
@@ -164,12 +176,13 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
 }
 
 class _CharacterTile extends StatelessWidget {
-  final String emoji, name;
+  final String emoji, name, persona;
   final bool selected;
   final VoidCallback onTap;
   const _CharacterTile(
       {required this.emoji,
       required this.name,
+      required this.persona,
       required this.selected,
       required this.onTap});
 
@@ -191,12 +204,25 @@ class _CharacterTile extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 34)),
-            const SizedBox(height: 6),
+            Text(emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(height: 4),
             Text(name,
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: selected ? AppTheme.indigo : AppTheme.ink)),
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(persona,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  style: const TextStyle(
+                      fontSize: 10, height: 1.2, color: AppTheme.inkFaint)),
+            ),
+            const SizedBox(height: 4),
+            Icon(Icons.volume_up_rounded,
+                size: 14,
+                color: selected ? AppTheme.indigo : AppTheme.inkFaint),
           ],
         ),
       ),
