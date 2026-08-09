@@ -87,8 +87,8 @@ class RpmService {
       name: 'Leo',
       emoji: '🧑',
       persona: 'Friendly buddy',
-      url:
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
+      // Real male human model (textured, walk-animated).
+      url: 'https://threejs.org/examples/models/gltf/Soldier.glb',
       pitch: 0.95,
       rate: 0.47,
       voice: 'Karen', // AU voice on iOS
@@ -98,7 +98,7 @@ class RpmService {
       name: 'Max',
       emoji: '🕴️',
       persona: 'Focused mentor',
-      url: 'https://threejs.org/examples/models/gltf/Soldier.glb',
+      url: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
       pitch: 0.85, // firm and low
       rate: 0.43,
       voice: null,
