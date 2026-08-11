@@ -17,6 +17,10 @@ class AvatarView extends StatelessWidget {
   /// taps reach the widget instead of being eaten by the 3D view.
   final bool allowSpin;
 
+  /// Slowly turn the model by itself. Only wanted in the editor preview — on
+  /// the dashboard the character should face the user, not rotate.
+  final bool autoRotate;
+
   /// Name of a built-in animation clip to play (models that ship clips, e.g.
   /// Robo's "Wave"/"Dance"). Ignored by models without animations.
   final String? animationName;
@@ -30,6 +34,7 @@ class AvatarView extends StatelessWidget {
     this.circle = true,
     this.background,
     this.allowSpin = false,
+    this.autoRotate = false,
     this.animationName,
     this.threeD = true,
   });
@@ -48,7 +53,7 @@ class AvatarView extends StatelessWidget {
           src: src,
           animationName: animationName,
           alt: 'Your 3D avatar',
-          autoRotate: !circle, // free-standing character slowly turns
+          autoRotate: autoRotate, // dashboard character faces the user
           cameraControls: allowSpin, // drag-to-spin only in the editor preview
           disableZoom: true,
           autoPlay: true, // play the model's built-in animation

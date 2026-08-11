@@ -57,7 +57,10 @@ class _RpmCreatorViewState extends State<RpmCreatorView> {
                 ]),
               ),
               child: const AvatarView(
-                  size: 220, circle: false, allowSpin: true),
+                  size: 220,
+                  circle: false,
+                  allowSpin: true,
+                  autoRotate: true),
             ),
           ),
           const SizedBox(height: 8),

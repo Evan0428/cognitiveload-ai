@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +33,8 @@ class _StandingAvatarState extends State<StandingAvatar>
   bool _talking = false;
   bool _greeted = false;
   bool _interacted = false; // hides the "tap me" hint once they engage
+  Timer? _idleTimer;
+  final math.Random _rng = math.Random();
   String _clip = 'idle';        // animation clip for models that have them
   _Reaction _reaction = _Reaction.hop;
 
@@ -46,11 +49,13 @@ class _StandingAvatarState extends State<StandingAvatar>
       vsync: this,
       duration: const Duration(milliseconds: 850),
     );
+    _startIdleActions();
   }
 
   @override
   void dispose() {
     _assistant.stop();
+    _idleTimer?.cancel();
     _idle.dispose();
     _react.dispose();
     super.dispose();
@@ -58,6 +63,15 @@ class _StandingAvatarState extends State<StandingAvatar>
 
   /// Play a physical reaction + (for models that support it) a real clip.
   void _playReaction(_Reaction r, String mood) {
+    // Each action has its own natural tempo.
+    _react.duration = switch (r) {
+      _Reaction.twirl => const Duration(milliseconds: 1100),
+      _Reaction.stretch => const Duration(milliseconds: 1200),
+      _Reaction.look => const Duration(milliseconds: 1600),
+      _Reaction.wave => const Duration(milliseconds: 1200),
+      _Reaction.cheer => const Duration(milliseconds: 1000),
+      _ => const Duration(milliseconds: 850),
+    };
     setState(() {
       _reaction = r;
       _clip = mood;
@@ -65,6 +79,34 @@ class _StandingAvatarState extends State<StandingAvatar>
     _react.forward(from: 0).then((_) {
       // Settle back to the idle clip once the reaction finishes.
       if (mounted) setState(() => _clip = 'idle');
+    });
+  }
+
+  /// Every so often the character does something on its own so it never feels
+  /// static — glancing around, stretching, waving, a little twirl.
+  void _startIdleActions() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer.periodic(const Duration(seconds: 7), (_) {
+      if (!mounted || _talking || _react.isAnimating) return;
+      // Only act sometimes, so it feels spontaneous rather than clockwork.
+      if (_rng.nextDouble() > 0.55) return;
+
+      const pool = [
+        _Reaction.look,
+        _Reaction.stretch,
+        _Reaction.wave,
+        _Reaction.hop,
+        _Reaction.twirl,
+        _Reaction.cheer,
+      ];
+      final r = pool[_rng.nextInt(pool.length)];
+      final mood = switch (r) {
+        _Reaction.wave => 'greet',
+        _Reaction.cheer => 'happy',
+        _Reaction.hop || _Reaction.twirl => 'jump',
+        _ => 'idle',
+      };
+      _playReaction(r, mood);
     });
   }
 
@@ -109,7 +151,7 @@ class _StandingAvatarState extends State<StandingAvatar>
 
         // --- reaction ---
         final t = _react.value;
-        double dx = 0, dy = 0, rot = 0, sx = 1, sy = 1;
+        double dx = 0, dy = 0, rot = 0, sx = 1, sy = 1, turn = 0;
         if (_react.isAnimating || t > 0) {
           switch (_reaction) {
             case _Reaction.hop:
@@ -125,7 +167,50 @@ class _StandingAvatarState extends State<StandingAvatar>
             case _Reaction.shake:
               dx = math.sin(t * math.pi * 8) * 7 * (1 - t);
               rot = math.sin(t * math.pi * 8) * 0.05 * (1 - t);
+            case _Reaction.wave:
+              // lean over and rock, like waving an arm
+              rot = math.sin(t * math.pi) * 0.10 +
+                  math.sin(t * math.pi * 6) * 0.07;
+              dy = -math.sin(t * math.pi) * 6;
+            case _Reaction.stretch:
+              // reach up tall, then settle back
+              final s = math.sin(t * math.pi);
+              sy = 1 + s * 0.14;
+              sx = 1 - s * 0.05;
+              dy = -s * 10;
+            case _Reaction.look:
+              // glance left, then right, then back to centre
+              dx = math.sin(t * math.pi * 2) * 10;
+              rot = math.sin(t * math.pi * 2) * 0.07;
+            case _Reaction.twirl:
+              // full turn on the spot
+              turn = t * math.pi * 2;
+              dy = -math.sin(t * math.pi) * 10;
+            case _Reaction.cheer:
+              // excited double bounce with a happy wiggle
+              final b = math.sin(t * math.pi * 3).abs();
+              dy = -b * 20;
+              rot = math.sin(t * math.pi * 6) * 0.10;
+              sy = 1 + b * 0.08;
           }
+        }
+
+        Widget content = Transform.scale(
+          scaleX: sx,
+          scaleY: sy * idleScaleY,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        );
+
+        // Y-axis turn for the twirl (perspective keeps it from looking flat).
+        if (turn != 0) {
+          content = Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY(turn),
+            child: content,
+          );
         }
 
         return Transform.translate(
@@ -133,12 +218,7 @@ class _StandingAvatarState extends State<StandingAvatar>
           child: Transform.rotate(
             angle: rot + idleTilt,
             alignment: Alignment.bottomCenter,
-            child: Transform.scale(
-              scaleX: sx,
-              scaleY: sy * idleScaleY,
-              alignment: Alignment.bottomCenter,
-              child: child,
-            ),
+            child: content,
           ),
         );
       },
@@ -300,4 +380,5 @@ class _StandingAvatarState extends State<StandingAvatar>
   }
 }
 
-enum _Reaction { hop, nod, shake }
+/// The character's repertoire of physical actions.
+enum _Reaction { hop, nod, shake, wave, stretch, look, twirl, cheer }
