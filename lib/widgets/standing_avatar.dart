@@ -31,6 +31,7 @@ class _StandingAvatarState extends State<StandingAvatar>
 
   bool _talking = false;
   bool _greeted = false;
+  bool _interacted = false; // hides the "tap me" hint once they engage
   String _clip = 'idle';        // animation clip for models that have them
   _Reaction _reaction = _Reaction.hop;
 
@@ -79,7 +80,10 @@ class _StandingAvatarState extends State<StandingAvatar>
       _ => 'greet',
     };
     _playReaction(r, mood);
-    setState(() => _talking = true);
+    setState(() {
+      _talking = true;
+      _interacted = true;
+    });
     await _assistant.speak(message);
   }
 
@@ -210,7 +214,10 @@ class _StandingAvatarState extends State<StandingAvatar>
           ),
 
         // The character: tap to make it react and talk.
+        // NOTE: the 3D view is a WebView and swallows touches, so the model is
+        // wrapped in IgnorePointer below and this detector owns the gestures.
         GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () => _onTap(message, r.level),
           onLongPress: () => _playReaction(_Reaction.hop, 'jump'),
           child: SizedBox(
@@ -246,13 +253,44 @@ class _StandingAvatarState extends State<StandingAvatar>
                     },
                   ),
                 ),
+                // IgnorePointer lets taps pass through the WebView-backed 3D
+                // view to the GestureDetector above.
                 _animated(
-                  AvatarView(
-                    size: widget.height,
-                    circle: false,
-                    animationName: RpmService.clipFor(_clip),
+                  IgnorePointer(
+                    child: AvatarView(
+                      size: widget.height,
+                      circle: false,
+                      animationName: RpmService.clipFor(_clip),
+                    ),
                   ),
                 ),
+
+                // "Tap me" affordance until the user interacts once.
+                if (!_interacted && !_talking)
+                  Positioned(
+                    bottom: 0,
+                    child: AnimatedBuilder(
+                      animation: _idle,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(0, -3 * math.sin(_idle.value * math.pi)),
+                        child: child,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.indigo,
+                          borderRadius: BorderRadius.circular(100),
+                          boxShadow: AppTheme.softShadow,
+                        ),
+                        child: const Text('Tap me',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
