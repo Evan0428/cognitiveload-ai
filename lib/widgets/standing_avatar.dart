@@ -35,6 +35,8 @@ class _StandingAvatarState extends State<StandingAvatar>
   bool _interacted = false; // hides the "tap me" hint once they engage
   Timer? _idleTimer;
   final math.Random _rng = math.Random();
+  int _seqToken = 0;   // cancels an in-flight sequence when a new one starts
+  int _lastSeq = -1;   // avoids repeating the same performance twice
   String _clip = 'idle';        // animation clip for models that have them
   _Reaction _reaction = _Reaction.hop;
 
@@ -61,8 +63,9 @@ class _StandingAvatarState extends State<StandingAvatar>
     super.dispose();
   }
 
-  /// Play a physical reaction + (for models that support it) a real clip.
-  void _playReaction(_Reaction r, String mood) {
+  /// Play one physical action + (for models that support it) a real clip.
+  Future<void> _playReaction(_Reaction r, String mood) async {
+    if (!mounted) return;
     // Each action has its own natural tempo.
     _react.duration = switch (r) {
       _Reaction.twirl => const Duration(milliseconds: 1100),
@@ -76,10 +79,32 @@ class _StandingAvatarState extends State<StandingAvatar>
       _reaction = r;
       _clip = mood;
     });
-    _react.forward(from: 0).then((_) {
-      // Settle back to the idle clip once the reaction finishes.
-      if (mounted) setState(() => _clip = 'idle');
-    });
+    await _react.forward(from: 0);
+    if (mounted) setState(() => _clip = 'idle');
+  }
+
+  /// Play several actions back to back, e.g. twirl → cheer → wave.
+  /// A newer sequence cancels whatever was running.
+  Future<void> _playSequence(List<(_Reaction, String)> steps) async {
+    final token = ++_seqToken;
+    for (final step in steps) {
+      if (!mounted || token != _seqToken) return;
+      await _playReaction(step.$1, step.$2);
+      if (!mounted || token != _seqToken) return;
+      await Future.delayed(const Duration(milliseconds: 110));
+    }
+  }
+
+  /// Pick a sequence at random, never the same one twice in a row.
+  List<(_Reaction, String)> _pickSequence(
+      List<List<(_Reaction, String)>> pool) {
+    if (pool.length == 1) return pool.first;
+    int i;
+    do {
+      i = _rng.nextInt(pool.length);
+    } while (i == _lastSeq);
+    _lastSeq = i;
+    return pool[i];
   }
 
   /// Every so often the character does something on its own so it never feels
@@ -99,33 +124,56 @@ class _StandingAvatarState extends State<StandingAvatar>
         _Reaction.twirl,
         _Reaction.cheer,
       ];
-      final r = pool[_rng.nextInt(pool.length)];
-      final mood = switch (r) {
-        _Reaction.wave => 'greet',
-        _Reaction.cheer => 'happy',
-        _Reaction.hop || _Reaction.twirl => 'jump',
-        _ => 'idle',
-      };
-      _playReaction(r, mood);
+      String moodOf(_Reaction x) => switch (x) {
+            _Reaction.wave => 'greet',
+            _Reaction.cheer => 'happy',
+            _Reaction.hop || _Reaction.twirl => 'jump',
+            _ => 'idle',
+          };
+
+      final first = pool[_rng.nextInt(pool.length)];
+      final steps = <(_Reaction, String)>[(first, moodOf(first))];
+      // Now and then it strings two actions together.
+      if (_rng.nextDouble() < 0.35) {
+        final second = pool[_rng.nextInt(pool.length)];
+        if (second != first) steps.add((second, moodOf(second)));
+      }
+      _playSequence(steps);
     });
   }
 
+  /// Tap = a different little performance each time, in a mood that matches
+  /// how the user's day is going.
   Future<void> _onTap(String message, LoadLevel level) async {
-    // React in a way that matches how the day is going.
-    final r = switch (level) {
-      LoadLevel.overload => _Reaction.shake,
-      LoadLevel.high => _Reaction.nod,
-      _ => _Reaction.hop,
+    final pool = switch (level) {
+      // Stressed: concerned, settling gestures.
+      LoadLevel.overload => <List<(_Reaction, String)>>[
+          [(_Reaction.shake, 'alert'), (_Reaction.nod, 'alert')],
+          [(_Reaction.shake, 'alert'), (_Reaction.look, 'idle')],
+          [(_Reaction.nod, 'alert'), (_Reaction.stretch, 'idle')],
+        ],
+      // Busy: attentive.
+      LoadLevel.high => <List<(_Reaction, String)>>[
+          [(_Reaction.nod, 'alert'), (_Reaction.look, 'idle')],
+          [(_Reaction.look, 'idle'), (_Reaction.nod, 'alert')],
+          [(_Reaction.stretch, 'idle'), (_Reaction.nod, 'alert')],
+        ],
+      // Doing fine: playful.
+      _ => <List<(_Reaction, String)>>[
+          [(_Reaction.wave, 'greet'), (_Reaction.cheer, 'happy')],
+          [(_Reaction.hop, 'jump'), (_Reaction.twirl, 'jump')],
+          [(_Reaction.twirl, 'jump'), (_Reaction.wave, 'greet')],
+          [(_Reaction.stretch, 'idle'), (_Reaction.wave, 'greet')],
+          [(_Reaction.cheer, 'happy'), (_Reaction.hop, 'jump')],
+          [(_Reaction.look, 'idle'), (_Reaction.cheer, 'happy')],
+        ],
     };
-    final mood = switch (level) {
-      LoadLevel.overload || LoadLevel.high => 'alert',
-      _ => 'greet',
-    };
-    _playReaction(r, mood);
+
     setState(() {
       _talking = true;
       _interacted = true;
     });
+    _playSequence(_pickSequence(pool)); // runs alongside the speech
     await _assistant.speak(message);
   }
 
@@ -299,7 +347,11 @@ class _StandingAvatarState extends State<StandingAvatar>
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => _onTap(message, r.level),
-          onLongPress: () => _playReaction(_Reaction.hop, 'jump'),
+          onLongPress: () => _playSequence(const [
+            (_Reaction.twirl, 'jump'),
+            (_Reaction.cheer, 'happy'),
+            (_Reaction.wave, 'greet'),
+          ]),
           child: SizedBox(
             height: widget.height,
             width: widget.height * 0.85,
