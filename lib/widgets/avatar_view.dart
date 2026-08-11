@@ -17,6 +17,10 @@ class AvatarView extends StatelessWidget {
   /// taps reach the widget instead of being eaten by the 3D view.
   final bool allowSpin;
 
+  /// Name of a built-in animation clip to play (models that ship clips, e.g.
+  /// Robo's "Wave"/"Dance"). Ignored by models without animations.
+  final String? animationName;
+
   /// Kept for call-site compatibility; every avatar is 3D now.
   final bool threeD;
 
@@ -26,6 +30,7 @@ class AvatarView extends StatelessWidget {
     this.circle = true,
     this.background,
     this.allowSpin = false,
+    this.animationName,
     this.threeD = true,
   });
 
@@ -38,8 +43,10 @@ class AvatarView extends StatelessWidget {
         final isRpm = src.contains('readyplayer.me');
 
         final model = ModelViewer(
-          key: ValueKey(src), // reload when the user picks another character
+          // reload when the character OR its current clip changes
+          key: ValueKey('$src|$animationName'),
           src: src,
+          animationName: animationName,
           alt: 'Your 3D avatar',
           autoRotate: !circle, // free-standing character slowly turns
           cameraControls: allowSpin, // drag-to-spin only in the editor preview

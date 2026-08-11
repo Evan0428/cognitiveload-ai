@@ -106,6 +106,30 @@ class RpmService {
     ),
   ];
 
+  /// Built-in animation clip for the current model, if it ships any.
+  /// Robo (RobotExpressive) has named clips; the bundled chibi models are
+  /// static, so they return null and are animated by the widget instead.
+  static String? clipFor(String mood) {
+    if (!effectiveUrl.contains('RobotExpressive')) return null;
+    switch (mood) {
+      case 'greet':
+        return 'Wave';
+      case 'happy':
+        return 'ThumbsUp';
+      case 'alert':
+        return 'No';
+      case 'jump':
+        return 'Jump';
+      default:
+        return 'Idle';
+    }
+  }
+
+  /// True when the current model animates itself (so the widget can keep its
+  /// own motion subtle instead of fighting the clip).
+  static bool get hasOwnAnimation =>
+      effectiveUrl.contains('RobotExpressive');
+
   /// Voice settings for the character the user currently has selected.
   static ({double pitch, double rate, String? voice, String locale})
       get currentVoice {
