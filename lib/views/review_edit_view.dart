@@ -212,7 +212,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
                   if (result.success) {
                     final msg = result.savedCount > 0
                         ? '${result.savedCount} task(s) saved & load recalculated!'
-                        : 'No new tasks saved — all clashed with existing time slots.';
+                        : 'No new tasks saved — all were skipped (time conflict or invalid time).';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(msg),
@@ -246,7 +246,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
             SizedBox(width: 8),
-            Expanded(child: Text('Time conflicts skipped', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            Expanded(child: Text('Tasks skipped', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
           ],
         ),
         content: Column(
@@ -254,7 +254,7 @@ class _ReviewEditViewState extends State<ReviewEditView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${result.conflicts.length} task(s) overlapped a time slot already occupied on your schedule, so they were not added:',
+              '${result.conflicts.length} task(s) could not be added (time conflict, or end time before start time):',
               style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),

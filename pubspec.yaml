@@ -40,7 +40,7 @@ dependencies:
   fluttermoji: ^1.0.2                        # Cartoon avatar (legacy fallback)
   flutter_tts: ^4.2.5                        # Assistant voice (text-to-speech)
   get: ^4.7.3                                # fluttermoji state
-  model_viewer_plus: ^1.10.0                 # Renders the 3D assistant (.glb)
+  model_viewer_plus: ^1.9.3                # Renders the 3D assistant (.glb)
 
 dev_dependencies:
   flutter_test:

@@ -155,10 +155,13 @@ class _DigitalScheduleViewState extends State<DigitalScheduleView> {
                       final startDateTime = DateTime(now.year, now.month, now.day, _startTime.hour, _startTime.minute);
                       final endDateTime = DateTime(now.year, now.month, now.day, _endTime.hour, _endTime.minute);
 
-                      // 时间合法性基本校验
-                      if (endDateTime.isBefore(startDateTime)) {
+                      // 🟢 结束时间必须晚于开始时间（新增和编辑都检查）→ 添加/保存失败
+                      if (!endDateTime.isAfter(startDateTime)) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("End time must be after start time!")),
+                          const SnackBar(
+                            content: Text('End time must be after start time — task not saved.'),
+                            backgroundColor: Colors.redAccent,
+                          ),
                         );
                         return;
                       }
