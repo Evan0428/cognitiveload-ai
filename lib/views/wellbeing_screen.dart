@@ -33,6 +33,8 @@ class WellbeingScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 const AssistantBubble(),
                 const SizedBox(height: 16),
+                _AiThresholdCard(state: state),
+                const SizedBox(height: 16),
                 _FocusLockCard(
                   enabled: state.focusLock,
                   onChanged: (_) => state.toggleFocusLock(),
@@ -422,6 +424,71 @@ class _SignalRow extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Explainable view of the AI adaptive burnout threshold: what it learned,
+/// how confident it is, and how far it moved from the user's own setting.
+class _AiThresholdCard extends StatelessWidget {
+  final AppState state;
+  const _AiThresholdCard({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = state.adaptiveThreshold;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.softShadow,
+        border: Border.all(color: AppTheme.indigo.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.indigo.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.psychology_rounded,
+                    color: AppTheme.indigo, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('AI Alert Threshold',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.ink)),
+              ),
+              Text(t.value.toStringAsFixed(0),
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.indigo)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Confidence grows as the model gathers evidence.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: t.confidence,
+              minHeight: 6,
+              backgroundColor: AppTheme.surfaceAlt,
+              valueColor: const AlwaysStoppedAnimation(AppTheme.indigo),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(t.explanation,
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.inkSoft, height: 1.4)),
         ],
       ),
     );

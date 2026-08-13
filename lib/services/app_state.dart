@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
+import 'adaptive_threshold.dart';
 import 'cognitive_load_engine.dart';
 import 'health_service.dart';
 import 'notification_service.dart';
@@ -45,6 +46,11 @@ class AppState extends ChangeNotifier {
   // Notification throttling so real alerts don't fire on every recompute.
   LoadLevel? _lastNotifiedLevel;
   DateTime? _lastNotifiedAt;
+
+  /// AI adaptive burnout threshold — learns the level at which THIS user
+  /// actually needs warning, instead of a fixed slider value.
+  AdaptiveThreshold _threshold = AdaptiveThreshold();
+  AdaptiveThreshold get adaptiveThreshold => _threshold;
 
   /// Focus Lock (report §2.4.5 — JITAI): when on, non-critical alerts are
   /// suppressed so the user is only interrupted when strain is dangerously
@@ -159,6 +165,11 @@ class AppState extends ChangeNotifier {
         .listen((doc) {
       if (doc.exists && doc.data() != null) {
         _userProfile = UserModel.fromMap(doc.data() as Map<String, dynamic>);
+        // A slider change is a fresh preference -> re-centre the learner.
+        if ((_userProfile!.burnoutThreshold - _threshold.base).abs() > 0.5) {
+          _threshold.setBase(_userProfile!.burnoutThreshold);
+          _saveThreshold();
+        }
         _recompute();
         notifyListeners();
       }
@@ -279,6 +290,7 @@ class AppState extends ChangeNotifier {
     _snapshot = await health.fetchLatest();
     await _saveSnapshot();
     _recompute();
+    _learnFromHistory();
     notifyListeners();
   }
 
@@ -339,7 +351,8 @@ class AppState extends ChangeNotifier {
 
     // 2. Check if combined score exceeds user's threshold
     final currentLoad = r.combinedLoad;
-    final threshold = _userProfile!.burnoutThreshold;
+    // AI: the personalised, learned threshold (not the raw slider value).
+    final threshold = _threshold.value;
 
     if (currentLoad >= threshold) {
       // Only notify if we haven't notified for this "over-threshold" event yet,
@@ -440,6 +453,54 @@ class AppState extends ChangeNotifier {
       _sentBreakSuggestions.clear();
       _lastNotifiedLoad = null;
       _lastCheckedDay = now;
+    }
+  }
+
+  // ---------------- AI adaptive threshold ----------------
+
+  /// User answered an alert: "I'm fine" — the warning was too eager.
+  Future<void> thresholdFeedbackDismissed() async {
+    _threshold.alertDismissed();
+    await _saveThreshold();
+    _recompute();
+    notifyListeners();
+  }
+
+  /// User answered an alert: "I'll rest" — the warning was useful.
+  Future<void> thresholdFeedbackAccepted() async {
+    _threshold.alertAccepted();
+    await _saveThreshold();
+    _recompute();
+    notifyListeners();
+  }
+
+  /// Implicit learning: compare each day's peak load against how recovery
+  /// actually held up the next day, and let the model correct itself.
+  void _learnFromHistory() {
+    final trend = readinessTrend;
+    if (trend.length < 2) return;
+    final before = trend[trend.length - 2].value;
+    final after = trend.last.value;
+    final peak = _result?.combinedLoad ?? 0;
+    if (peak <= 0) return;
+    _threshold.observeOutcome(
+      peakLoad: peak,
+      readinessBefore: before,
+      readinessAfter: after,
+    );
+    _saveThreshold();
+  }
+
+  Future<void> _saveThreshold() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('adaptiveThreshold', _threshold.encode());
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(
+          {'adaptiveThreshold': _threshold.toJson()}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Adaptive threshold cloud save failed (kept local): $e');
     }
   }
 
@@ -667,5 +728,11 @@ class AppState extends ChangeNotifier {
             .map((j) => PhysiologicalSnapshot.fromJson(j)));
     }
     _focusLock = prefs.getBool('focusLock') ?? false;
+    final th = prefs.getString('adaptiveThreshold');
+    if (th != null) {
+      try {
+        _threshold = AdaptiveThreshold.decode(th);
+      } catch (_) {/* keep default */}
+    }
   }
 }

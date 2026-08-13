@@ -33,6 +33,7 @@ class _StandingAvatarState extends State<StandingAvatar>
   bool _talking = false;
   bool _greeted = false;
   bool _interacted = false; // hides the "tap me" hint once they engage
+  bool _isWarning = false;  // show AI feedback chips only for real warnings
   Timer? _idleTimer;
   final math.Random _rng = math.Random();
   int _seqToken = 0;   // cancels an in-flight sequence when a new one starts
@@ -172,6 +173,8 @@ class _StandingAvatarState extends State<StandingAvatar>
     setState(() {
       _talking = true;
       _interacted = true;
+      _isWarning =
+          level == LoadLevel.high || level == LoadLevel.overload;
     });
     _playSequence(_pickSequence(pool)); // runs alongside the speech
     await _assistant.speak(message);
@@ -341,6 +344,38 @@ class _StandingAvatarState extends State<StandingAvatar>
             ),
           ),
 
+        // 🧠 AI feedback: the answer teaches the adaptive threshold whether it
+        // warned too early, too late, or just right.
+        if (_talking && _isWarning)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _FeedbackChip(
+                  label: "I'm fine",
+                  icon: Icons.thumb_up_alt_outlined,
+                  onTap: () {
+                    context.read<AppState>().thresholdFeedbackDismissed();
+                    _assistant.stop();
+                    setState(() => _talking = false);
+                  },
+                ),
+                const SizedBox(width: 8),
+                _FeedbackChip(
+                  label: "I'll rest",
+                  icon: Icons.self_improvement_rounded,
+                  primary: true,
+                  onTap: () {
+                    context.read<AppState>().thresholdFeedbackAccepted();
+                    _assistant.stop();
+                    setState(() => _talking = false);
+                  },
+                ),
+              ],
+            ),
+          ),
+
         // The character: tap to make it react and talk.
         // NOTE: the 3D view is a WebView and swallows touches, so the model is
         // wrapped in IgnorePointer below and this detector owns the gestures.
@@ -434,3 +469,50 @@ class _StandingAvatarState extends State<StandingAvatar>
 
 /// The character's repertoire of physical actions.
 enum _Reaction { hop, nod, shake, wave, stretch, look, twirl, cheer }
+
+
+/// Small answer button under the speech bubble; the user's choice is training
+/// data for the adaptive threshold.
+class _FeedbackChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool primary;
+  final VoidCallback onTap;
+  const _FeedbackChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: primary ? AppTheme.indigo : AppTheme.surface,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+              color: primary ? AppTheme.indigo : AppTheme.line),
+          boxShadow: AppTheme.softShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 14, color: primary ? Colors.white : AppTheme.inkSoft),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: primary ? Colors.white : AppTheme.ink)),
+          ],
+        ),
+      ),
+    );
+  }
+}

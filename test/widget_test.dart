@@ -5,9 +5,11 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cognitiveload_ai/models/models.dart';
+import 'package:cognitiveload_ai/services/adaptive_threshold.dart';
 import 'package:cognitiveload_ai/services/cognitive_load_engine.dart';
 
 void main() {
+  _adaptiveThresholdTests();
   final engine = CognitiveLoadEngine();
 
   ScheduleEvent event(String title, int startHour, int endHour) {
@@ -120,6 +122,90 @@ void main() {
           engine.analyse(events, snap(hr: 99, hrv: 18, sleep: 3.5, steps: 300));
       expect(result.combinedLoad, greaterThan(55));
       expect(result.alerts, isNotEmpty);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive AI threshold (Chua) — the model must actually learn from feedback.
+// ---------------------------------------------------------------------------
+void _adaptiveThresholdTests() {
+  group('AdaptiveThreshold (on-device learning)', () {
+    test('starts at the user preference and is not yet personalised', () {
+      final t = AdaptiveThreshold(base: 70);
+      expect(t.value, 70);
+      expect(t.isPersonalised, isFalse);
+      expect(t.confidence, 0);
+    });
+
+    test('dismissing alerts raises the threshold (warn later)', () {
+      final t = AdaptiveThreshold(base: 70);
+      for (var i = 0; i < 5; i++) {
+        t.alertDismissed();
+      }
+      expect(t.value, greaterThan(70));
+      expect(t.isPersonalised, isTrue);
+    });
+
+    test('accepting alerts nudges the threshold down (warn earlier)', () {
+      final t = AdaptiveThreshold(base: 70);
+      for (var i = 0; i < 5; i++) {
+        t.alertAccepted();
+      }
+      expect(t.value, lessThan(70));
+    });
+
+    test('a missed burnout (strain without warning) lowers the threshold', () {
+      final t = AdaptiveThreshold(base: 70);
+      t.observeOutcome(
+          peakLoad: 60, readinessBefore: 80, readinessAfter: 60);
+      expect(t.value, lessThan(70));
+    });
+
+    test('a false alarm (warned but coped) raises the threshold', () {
+      final t = AdaptiveThreshold(base: 70);
+      t.observeOutcome(
+          peakLoad: 90, readinessBefore: 80, readinessAfter: 79);
+      expect(t.value, greaterThan(70));
+    });
+
+    test('learning is bounded around the user preference', () {
+      final t = AdaptiveThreshold(base: 70);
+      for (var i = 0; i < 200; i++) {
+        t.alertDismissed();
+      }
+      expect(t.value, lessThanOrEqualTo(70 + AdaptiveThreshold.drift));
+      expect(t.value, lessThanOrEqualTo(AdaptiveThreshold.maxValue));
+    });
+
+    test('learning rate decays so the value settles', () {
+      final a = AdaptiveThreshold(base: 70);
+      a.alertDismissed();
+      final firstStep = a.value - 70;
+
+      final b = AdaptiveThreshold(base: 70, observations: 30, learned: 70);
+      b.alertDismissed();
+      final laterStep = b.value - 70;
+
+      expect(laterStep, lessThan(firstStep));
+    });
+
+    test('survives a save/load round trip', () {
+      final t = AdaptiveThreshold(base: 65)..alertDismissed();
+      final restored = AdaptiveThreshold.decode(t.encode());
+      expect(restored.value, t.value);
+      expect(restored.observations, t.observations);
+      expect(restored.base, 65);
+    });
+
+    test('moving the slider re-centres the model', () {
+      final t = AdaptiveThreshold(base: 70);
+      for (var i = 0; i < 5; i++) {
+        t.alertDismissed();
+      }
+      t.setBase(50);
+      expect(t.value, 50);
+      expect(t.observations, 0);
     });
   });
 }
