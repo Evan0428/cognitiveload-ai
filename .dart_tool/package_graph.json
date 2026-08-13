@@ -76,7 +76,7 @@
     },
     {
       "name": "model_viewer_plus",
-      "version": "1.9.3",
+      "version": "1.10.0",
       "dependencies": [
         "android_intent_plus",
         "flutter",
@@ -475,15 +475,6 @@
         "url_launcher_platform_interface",
         "url_launcher_web",
         "url_launcher_windows"
-      ]
-    },
-    {
-      "name": "android_intent_plus",
-      "version": "5.3.1",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "platform"
       ]
     },
     {
@@ -1048,11 +1039,6 @@
       ]
     },
     {
-      "name": "platform",
-      "version": "3.1.6",
-      "dependencies": []
-    },
-    {
       "name": "vector_graphics_compiler",
       "version": "1.2.3",
       "dependencies": [
@@ -1153,6 +1139,11 @@
       ]
     },
     {
+      "name": "platform",
+      "version": "3.1.6",
+      "dependencies": []
+    },
+    {
       "name": "petitparser",
       "version": "7.0.2",
       "dependencies": [
@@ -1241,6 +1232,15 @@
       "version": "1.4.0",
       "dependencies": [
         "collection"
+      ]
+    },
+    {
+      "name": "android_intent_plus",
+      "version": "6.1.0",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "platform"
       ]
     }
   ],

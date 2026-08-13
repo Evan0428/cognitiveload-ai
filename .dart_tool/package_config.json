@@ -9,7 +9,7 @@
     },
     {
       "name": "android_intent_plus",
-      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/android_intent_plus-5.3.1",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/android_intent_plus-6.1.0",
       "packageUri": "lib/",
       "languageVersion": "3.1"
     },
@@ -459,9 +459,9 @@
     },
     {
       "name": "model_viewer_plus",
-      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/model_viewer_plus-1.9.3",
+      "rootUri": "file:///Users/zhangshengong/.pub-cache/hosted/pub.dev/model_viewer_plus-1.10.0",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.10"
     },
     {
       "name": "nested",
