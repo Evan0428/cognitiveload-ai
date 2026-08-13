@@ -16,6 +16,10 @@ class OcrService {
   static bool demoMode = !(defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS);
 
+  /// Set to true to print the raw OCR lines + parse decisions to the console.
+  /// Handy when a specific timetable misreads — flip on, scan, share the log.
+  static bool debugParse = false;
+
   // Shared regexes
   static final RegExp _timeRangeReg = RegExp(
       r'(\d{1,2}[:.]\d{2})\s*(AM|PM)?\s*[-–to至\s]+\s*(\d{1,2}[:.]\d{2})\s*(AM|PM)?',
@@ -31,6 +35,16 @@ class OcrService {
   static final RegExp _roomReg = RegExp(r'^[A-Z]{1,2}\d{2,3}[A-Z]?$|^[A-Z]{1,2}\s[A-Z]$', caseSensitive: false); // e.g. B001, DK Z, TA255, Q105
   // Multi-token hall / venue codes such as "DK ABA", "MAK KP1", "DK Z".
   static final RegExp _venueReg = RegExp(r'^[A-Z]{1,3}(\s+[A-Z0-9]{1,6}){1,3}$');
+  // Month-name dates: "30 Mar", "1 Apr", "Mar 30", "30 March 2026".
+  // The letters must be a real month, so "Monday 30" isn't mistaken for a date.
+  static final RegExp _monthDateReg = RegExp(
+      r'(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:\s+(\d{4}))?'
+      r'|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:\s+(\d{4}))?',
+      caseSensitive: false);
+  static const Map<String, int> _monthNum = {
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+  };
 
   static final RegExp _singleTimeReg =
       RegExp(r'(\d{1,2}[:.]\d{2})\s*(AM|PM)?', caseSensitive: false);
@@ -104,6 +118,14 @@ class OcrService {
     }
     if (allLines.isEmpty) return [];
 
+    if (debugParse) {
+      debugPrint('===== OCR RAW LINES (${allLines.length}) =====');
+      for (final l in allLines) {
+        final b = l.boundingBox;
+        debugPrint('[${b.left.toInt()},${b.top.toInt()}-${b.right.toInt()},${b.bottom.toInt()}] "${l.text}"');
+      }
+    }
+
     final rows = _groupLinesIntoRows(allLines);
     // rowTexts[i] = concatenated text of row i in left-to-right order
     final rowTexts = rows.map((r) => r.map((l) => l.text.trim()).join('   ')).toList();
@@ -152,8 +174,7 @@ class OcrService {
       final t = l.text.trim();
       final day = _extractDay(t);
       if (day != null && t.length <= 22) {
-        final dm = _dateReg.firstMatch(t);
-        dayAnchors.add(_bandFromLine(l, day, dm != null ? _formatDate(dm) : null));
+        dayAnchors.add(_bandFromLine(l, day, _parseAnyDate(t)));
         continue;
       }
       // A stand-alone date with no day name — becomes a candidate day anchor
@@ -187,9 +208,23 @@ class OcrService {
     final double ySpread = ys.reduce(math.max) - ys.reduce(math.min);
     final bool daysAreRows = ySpread >= xSpread;
 
-    return daysAreRows
+    if (debugParse) {
+      debugPrint('GRID: anchors=${anchors.map((a) => a.day).toList()} '
+          'source=${dayAnchors.length >= 2 ? "dayNames" : "dates"} '
+          'daysAreRows=$daysAreRows (xSpread=${xSpread.toInt()}, ySpread=${ySpread.toInt()})');
+    }
+
+    final tasks = daysAreRows
         ? _parseDaysAsRows(anchors, pureTimeLines, otherLines)
         : _parseDaysAsColumns(anchors, pureTimeLines, otherLines);
+
+    if (debugParse) {
+      debugPrint('GRID: produced ${tasks.length} tasks');
+      for (final t in tasks) {
+        debugPrint('  • ${t.day} ${t.date} ${t.startTime}-${t.endTime}  ${t.subject}');
+      }
+    }
+    return tasks;
   }
 
   _DayBand _bandFromLine(TextLine l, String day, String? date) {
@@ -201,6 +236,35 @@ class OcrService {
       left: l.boundingBox.left,
       right: l.boundingBox.right,
     );
+  }
+
+  /// Parses a date out of a header string — numeric ("7/08/2026", "2026-08-03")
+  /// OR month-name ("Monday 30 Mar", "1 Apr") — into DD/MM/YYYY. Null if none.
+  String? _parseAnyDate(String text) {
+    final dm = _dateReg.firstMatch(text);
+    if (dm != null) return _formatDate(dm);
+
+    final mm = _monthDateReg.firstMatch(text);
+    if (mm != null) {
+      // Branch 1: "30 Mar" → g1=day, g2=month, g3=year. Branch 2: "Mar 30" → g4=month, g5=day, g6=year.
+      final int? day = int.tryParse(mm.group(1) ?? mm.group(5) ?? '');
+      final String monRaw = (mm.group(2) ?? mm.group(4) ?? '').toLowerCase();
+      final String? yearStr = mm.group(3) ?? mm.group(6);
+      final int? month = monRaw.length >= 3 ? _monthNum[monRaw.substring(0, 3)] : null;
+      if (day != null && day >= 1 && day <= 31 && month != null) {
+        final int year = yearStr != null ? int.parse(yearStr) : DateTime.now().year;
+        return "${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year";
+      }
+    }
+    return null;
+  }
+
+  /// True when a short line is essentially just a date (numeric or month-name)
+  /// — used to keep date sub-rows out of the class-cell content.
+  bool _isStandaloneDate(String t) {
+    if (t.isEmpty || t.length > 16) return false;
+    if (_timeRangeReg.hasMatch(t) || _parseAxisTime(t) != null) return false;
+    return _parseAnyDate(t) != null;
   }
 
   /// Derives the weekday name from a DD/MM/YYYY string (returns null if it
@@ -257,11 +321,9 @@ class OcrService {
     // "Mon" above "2026-08-03") so every day keeps its OWN date.
     for (final l in otherLines) {
       final t = l.text.trim();
-      if (t.length > 14) continue;
-      final dm = _dateReg.firstMatch(t);
-      if (dm == null || _timeRangeReg.hasMatch(t)) continue;
+      if (!_isStandaloneDate(t)) continue;
       final int bi = bandFor(l.boundingBox.center.dy);
-      bands[bi].date ??= _formatDate(dm);
+      bands[bi].date ??= _parseAnyDate(t);
     }
 
     final content = <TextLine>[...otherLines, ...inCellTimes];
@@ -271,10 +333,7 @@ class OcrService {
       if (b.center.dy < firstTop - tol) continue; // header / info above grid
       if (b.center.dy > gridBottom) continue; // tables below the grid
       if (b.center.dx <= dayColRight) continue; // day-label column
-      final t = l.text.trim();
-      if (t.length <= 14 && _dateReg.hasMatch(t) && !_timeRangeReg.hasMatch(t)) {
-        continue; // stray date cell
-      }
+      if (_isStandaloneDate(l.text.trim())) continue; // stray date cell
       perBand[bandFor(b.center.dy)].add(l);
     }
 
@@ -336,12 +395,37 @@ class OcrService {
         .toList();
     final slots = _buildTimeAxis(axisLines, horizontal: false);
 
+    // Content starts just above the first time-axis row. Everything above that
+    // (day names AND the date sub-row under them) is header, not a class.
+    double firstRowY = double.infinity;
+    double contentTop = headerBottom;
+    if (slots.isNotEmpty) {
+      firstRowY = slots.map((s) => s.center).reduce(math.min);
+      double rowGap = _medianGap(slots.map((s) => s.center).toList());
+      if (rowGap <= 0) rowGap = 20;
+      contentTop = math.max(headerBottom, firstRowY - rowGap * 0.6);
+    }
+
+    // Attach each day's date from its header date line (e.g. "30 Mar" sits in
+    // the header under "Monday"). The day name and its date are usually two
+    // separate OCR lines, so match the date to a day column by x-position.
+    // Any standalone date ABOVE the first time row belongs to the header.
+    for (final l in otherLines) {
+      final t = l.text.trim();
+      if (!_isStandaloneDate(t)) continue;
+      if (l.boundingBox.center.dy >= firstRowY) continue; // must be in header
+      final d = _parseAnyDate(t);
+      if (d == null) continue;
+      days[colFor(l.boundingBox.center.dx)].date ??= d;
+    }
+
     final content = <TextLine>[...otherLines, ...inCellTimes];
     final perCol = List.generate(days.length, (_) => <TextLine>[]);
     for (final l in content) {
       final b = l.boundingBox;
       if (b.center.dx < firstLeft - 5) continue; // left time axis
-      if (b.center.dy <= headerBottom) continue; // day header row
+      if (b.center.dy < contentTop) continue; // day-name + date header rows
+      if (_isStandaloneDate(l.text.trim())) continue; // stray date cell
       perCol[colFor(b.center.dx)].add(l);
     }
 
