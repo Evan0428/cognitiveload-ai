@@ -7,7 +7,9 @@
     <application
         android:name="${applicationName}"
         android:label="cognitiveload_ai"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
 
         <activity
             android:name=".MainActivity"
