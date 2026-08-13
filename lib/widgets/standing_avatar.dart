@@ -450,10 +450,10 @@ class _StandingAvatarState extends State<StandingAvatar>
                           borderRadius: BorderRadius.circular(100),
                           boxShadow: AppTheme.softShadow,
                         ),
-                        child: const Text('Tap me',
+                        child: const Text('Tap me · drag to move',
                             style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold)),
                       ),
                     ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_state.dart';
 import '../services/cognitive_load_engine.dart';
 import '../view_models/add_task_viewmodel.dart'; 
@@ -30,6 +31,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   String _realName = '...';
   String? _avatarBase64; // user's uploaded profile photo
+  Offset? _avatarPos;    // where the user parked the 3D assistant
+  static const double _assistantHeight = 190;
 
   @override
   void initState() {
@@ -38,6 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Restore the user's saved avatars (3D RPM primary, cartoon fallback).
     RpmService().load();
     AvatarService().loadFromCloud();
+    _loadAvatarPos();
   }
 
   Future<void> _fetchUserNameFromFirestore() async {
@@ -59,6 +63,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       debugPrint("Error fetching user name: $e");
+    }
+  }
+
+  /// The assistant, freely draggable. Its spot is remembered, so if it ever
+  /// covers a button the user just drags it somewhere better.
+  Widget _buildDraggableAssistant(BuildContext context) {
+    const w = _assistantHeight * 0.85; // character width
+    const h = _assistantHeight + 90; // + room for the speech bubble
+    final media = MediaQuery.of(context);
+    final maxX = media.size.width - w;
+    // Keep it clear of the bottom navigation bar.
+    final maxY = media.size.height - h - media.padding.bottom - 70;
+
+    final pos = _avatarPos ?? Offset(maxX - 6, maxY);
+
+    return Positioned(
+      left: pos.dx.clamp(0.0, maxX > 0 ? maxX : 0.0),
+      top: pos.dy.clamp(media.padding.top, maxY > 0 ? maxY : 0.0),
+      child: GestureDetector(
+        // Drag to reposition; taps still reach the character underneath.
+        onPanUpdate: (d) {
+          setState(() {
+            final next = (_avatarPos ?? Offset(maxX - 6, maxY)) + d.delta;
+            _avatarPos = Offset(
+              next.dx.clamp(0.0, maxX > 0 ? maxX : 0.0),
+              next.dy.clamp(media.padding.top, maxY > 0 ? maxY : 0.0),
+            );
+          });
+        },
+        onPanEnd: (_) => _saveAvatarPos(),
+        child: const StandingAvatar(height: _assistantHeight),
+      ),
+    );
+  }
+
+  Future<void> _saveAvatarPos() async {
+    if (_avatarPos == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('assistantX', _avatarPos!.dx);
+    await prefs.setDouble('assistantY', _avatarPos!.dy);
+  }
+
+  Future<void> _loadAvatarPos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final x = prefs.getDouble('assistantX');
+    final y = prefs.getDouble('assistantY');
+    if (x != null && y != null && mounted) {
+      setState(() => _avatarPos = Offset(x, y));
     }
   }
 
@@ -176,12 +228,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: Stack(
         children: [
           IndexedStack(index: _currentIndex, children: _tabs),
-          // 🧍 The 3D assistant stands free over the UI on every tab.
-          const Positioned(
-            right: 6,
-            bottom: 6,
-            child: SafeArea(child: StandingAvatar()),
-          ),
+          // 🧍 The 3D assistant stands free over the UI on every tab, and can
+          // be dragged anywhere so it never blocks a button.
+          _buildDraggableAssistant(context),
         ],
       ),
       bottomNavigationBar: Container(
