@@ -416,7 +416,13 @@ class _SettingsViewState extends State<SettingsView> {
                         );
                       },
                     ),
-                    const Text('Alerts trigger when daily load exceeds this value', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    const Text(
+                      'Alerts trigger when your daily load reaches this value. '
+                      'This is the AI\'s starting point — it then personalises '
+                      'the level from your alert answers and recovery. '
+                      'Changing it here restarts that learning.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.4),
+                    ),
                   ],
                 ),
               ),

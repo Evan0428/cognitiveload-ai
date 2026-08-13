@@ -124,17 +124,36 @@ class AdaptiveThreshold {
   factory AdaptiveThreshold.decode(String s) =>
       AdaptiveThreshold.fromJson(jsonDecode(s) as Map<String, dynamic>);
 
+  /// One-line meaning of the number itself.
+  String get headline =>
+      'You get warned when your daily load reaches ${value.toStringAsFixed(0)} out of 100.';
+
   /// Plain-English explanation for the UI (explainable AI).
+  ///
+  /// Makes clear that learning happens two ways: from the answers you give an
+  /// alert, AND automatically from how your recovery holds up afterwards.
   String get explanation {
     if (!isPersonalised) {
-      return 'Learning starts once you respond to alerts — for now it uses '
-          'your chosen level of ${base.toStringAsFixed(0)}.';
+      return 'Using your chosen level of ${base.toStringAsFixed(0)} for now. '
+          "I'll personalise it as I learn how you answer alerts and how your "
+          'recovery holds up afterwards.';
     }
-    final dir = shift.abs() < 0.5
-        ? 'matches'
-        : (shift > 0 ? 'is ${shift.toStringAsFixed(0)} above' : 'is ${(-shift).toStringAsFixed(0)} below');
+
     final pct = (confidence * 100).toStringAsFixed(0);
-    return 'Learned from $_observations observations ($pct% confidence). '
-        'Your personal alert level $dir your original setting.';
+    final learned =
+        'Learned from $_observations ${_observations == 1 ? "observation" : "observations"} ($pct% confidence). ';
+
+    if (shift.abs() < 0.5) {
+      return '${learned}Your level is steady at ${value.toStringAsFixed(0)} — '
+          'the same as you chose, so your setting looks right for you.';
+    }
+    if (shift > 0) {
+      return '${learned}I now warn you at ${value.toStringAsFixed(0)} instead '
+          'of ${base.toStringAsFixed(0)} — you handle busy days better than '
+          'your setting assumed, so I hold off a little longer.';
+    }
+    return '${learned}I now warn you at ${value.toStringAsFixed(0)} instead of '
+        '${base.toStringAsFixed(0)} — heavy days tend to cost you recovery, so '
+        'I warn you earlier.';
   }
 }

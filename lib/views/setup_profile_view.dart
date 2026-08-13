@@ -119,7 +119,8 @@ class _SetupProfileViewState extends State<SetupProfileView> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      "You'll receive alerts when your daily cognitive load exceeds this threshold",
+                      "You'll be alerted when your daily cognitive load reaches this level (out of 100). "
+                      "It's just a starting point — the app learns your real limit over time.",
                       style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.4),
                     ),
                   ],

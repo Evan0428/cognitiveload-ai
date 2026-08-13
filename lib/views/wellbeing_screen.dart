@@ -474,6 +474,13 @@ class _AiThresholdCard extends StatelessWidget {
                       color: AppTheme.indigo)),
             ],
           ),
+          const SizedBox(height: 6),
+          // What the number actually means.
+          Text(t.headline,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 12),
           // Confidence grows as the model gathers evidence.
           ClipRRect(
