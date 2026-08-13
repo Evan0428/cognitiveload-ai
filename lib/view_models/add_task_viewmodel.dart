@@ -4,8 +4,9 @@ import '../models/task_model.dart';
 import '../services/task_service.dart';
 
 /// Outcome of a manual task submission.
-/// `conflict` = the chosen time slot overlaps an existing task.
-enum SubmitResult { success, conflict, invalid, error }
+/// `conflict`    = the chosen time slot overlaps an existing task.
+/// `invalidTime` = end time is not after start time.
+enum SubmitResult { success, conflict, invalidTime, invalid, error }
 
 class AddTaskViewModel extends ChangeNotifier {
   final TaskService _taskService = TaskService();
@@ -89,6 +90,11 @@ class AddTaskViewModel extends ChangeNotifier {
     try {
       final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
       final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
+
+      // 🟢 结束时间必须晚于开始时间（新增和编辑都检查）。否则添加/保存失败。
+      final int startMins = _startTime!.hour * 60 + _startTime!.minute;
+      final int endMins = _endTime!.hour * 60 + _endTime!.minute;
+      if (endMins <= startMins) return SubmitResult.invalidTime;
 
       // 🟢 时段重叠拦截 (FR 3.1)：同一天里，只要新任务的时间区间和已有任务相交
       // （新开始 < 旧结束 且 新结束 > 旧开始）就拒绝——不看名字，同一时段不能再放任务。

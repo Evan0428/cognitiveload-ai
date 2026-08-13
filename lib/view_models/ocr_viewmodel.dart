@@ -149,9 +149,16 @@ class OcrViewModel extends ChangeNotifier {
             DateTime(taskDate.year, taskDate.month, taskDate.day, startHour, startMin);
         final DateTime newEnd =
             DateTime(taskDate.year, taskDate.month, taskDate.day, endHour, endMin);
+
+        // 🟢 结束时间必须晚于开始时间，否则跳过并列入报告
+        if (!newEnd.isAfter(newStart)) {
+          conflicts.add('${task.subject} — ${task.day} ${task.date} (end time before start time)');
+          continue;
+        }
+
         final bool clashes = occupied.any((iv) => _overlaps(newStart, newEnd, iv[0], iv[1]));
         if (clashes) {
-          conflicts.add('${task.subject} — ${task.day} ${task.date} ${task.startTime}');
+          conflicts.add('${task.subject} — ${task.day} ${task.date} ${task.startTime} (time conflict)');
           continue; // skip: this time slot is already occupied
         }
         occupied.add([newStart, newEnd]); // reserve the slot for the rest of the batch

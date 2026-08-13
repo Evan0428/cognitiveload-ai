@@ -316,6 +316,11 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                       await appState.syncTasksFromFirestore();
                       messenger.showSnackBar(const SnackBar(content: Text("Task successfully saved!")));
                       navigator.pop();
+                    } else if (result == SubmitResult.invalidTime) {
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('End time must be after start time — task not saved.'),
+                        backgroundColor: Colors.redAccent,
+                      ));
                     } else if (result == SubmitResult.conflict) {
                       messenger.showSnackBar(const SnackBar(
                         content: Text('Time conflict: another task already occupies this time slot — not added.'),

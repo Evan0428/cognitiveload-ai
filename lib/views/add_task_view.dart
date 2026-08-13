@@ -244,6 +244,21 @@ class _AddTaskViewState extends State<AddTaskView> {
 
                       if (!mounted) return;
 
+                      // 🟢 结束时间不晚于开始时间 → 添加失败
+                      if (result == SubmitResult.invalidTime) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text(
+                                'End time must be after start time — task not saved.'),
+                            backgroundColor: Colors.redAccent,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                        return;
+                      }
+
                       // 🟢 时段冲突 → 橙色提示，不添加
                       if (result == SubmitResult.conflict) {
                         ScaffoldMessenger.of(context).showSnackBar(
