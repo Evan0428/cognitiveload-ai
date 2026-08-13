@@ -227,7 +227,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 itemCount: filteredEvents.length,
                 itemBuilder: (context, index) {
                   final event = filteredEvents[index];
-                  final int score = _getIntValueByIntensity(event.intensity);
+                  // Manually-rated tasks show the exact user-set score; all
+                  // others keep the intensity-band representative value.
+                  final int score = event.ratingType.contains('Manual')
+                      ? event.cognitiveLoadScore
+                      : _getIntValueByIntensity(event.intensity);
                   final Color scoreColor = _getColorByIntensity(event.intensity);
 
                   return InkWell(

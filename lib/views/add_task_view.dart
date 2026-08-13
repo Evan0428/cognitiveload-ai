@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../view_models/add_task_viewmodel.dart';
 import '../services/app_state.dart';
 import '../models/models.dart';
+import 'widgets/manual_rating_dialog.dart';
 
 class AddTaskView extends StatefulWidget {
   const AddTaskView({super.key});
@@ -172,7 +173,11 @@ class _AddTaskViewState extends State<AddTaskView> {
                     icon: const Icon(Icons.tune_rounded, size: 14, color: Color(0xFF6366F1)),
                     label: const Text('Manual Rating', style: TextStyle(fontSize: 13, color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                     onPressed: () {
-                      vm.setManualScore(90);
+                      showManualRatingDialog(
+                        context,
+                        initialScore: vm.cognitiveLoadScore,
+                        onApply: vm.setManualScore,
+                      );
                     },
                   )
                 ],
@@ -199,9 +204,11 @@ class _AddTaskViewState extends State<AddTaskView> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Auto-calculated based on keywords in task name',
-                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+              Text(
+                vm.ratingType.contains('Manual')
+                    ? 'Manually set by you'
+                    : 'Auto-calculated based on keywords in task name',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
               ),
               const SizedBox(height: 40),
 

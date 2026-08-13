@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
 import '../view_models/add_task_viewmodel.dart';
+import 'widgets/manual_rating_dialog.dart';
 
 class TaskManagerView extends StatefulWidget {
   const TaskManagerView({super.key});
@@ -272,7 +273,13 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                       children: [
                         const Text('Cognitive Load Score', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B))),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            showManualRatingDialog(
+                              context,
+                              initialScore: addTaskVM.cognitiveLoadScore,
+                              onApply: addTaskVM.setManualScore,
+                            );
+                          },
                           style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                           child: const Text('⚡ Manual Rating', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                         )
@@ -282,7 +289,7 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(color: const Color(0xFFFFECEF), borderRadius: BorderRadius.circular(20)),
-                      child: Text('Automatic: ${addTaskVM.cognitiveLoadScore}', style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text('${addTaskVM.ratingType}: ${addTaskVM.cognitiveLoadScore}', style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const SizedBox(height: 10),
                     const Text('Auto-calculated based on keywords in task name', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
