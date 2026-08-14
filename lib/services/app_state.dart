@@ -15,6 +15,7 @@ import 'cognitive_load_engine.dart';
 import 'health_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
+import 'task_weight_learner.dart';
 
 class AppState extends ChangeNotifier {
   final OcrService ocr = OcrService();
@@ -122,6 +123,7 @@ class AppState extends ChangeNotifier {
     });
 
     await _load();
+    await TaskWeightLearner.instance.load(); // personalised task weights
     await syncTasksFromFirestore();
     _listenToUserProfile(FirebaseAuth.instance.currentUser?.uid);
     await syncPhysiologyFromFirestore();

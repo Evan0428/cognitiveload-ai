@@ -478,6 +478,15 @@
       ]
     },
     {
+      "name": "android_intent_plus",
+      "version": "6.1.0",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "platform"
+      ]
+    },
+    {
       "name": "flutter_web_plugins",
       "version": "0.0.0",
       "dependencies": [
@@ -1039,6 +1048,11 @@
       ]
     },
     {
+      "name": "platform",
+      "version": "3.1.6",
+      "dependencies": []
+    },
+    {
       "name": "vector_graphics_compiler",
       "version": "1.2.3",
       "dependencies": [
@@ -1139,11 +1153,6 @@
       ]
     },
     {
-      "name": "platform",
-      "version": "3.1.6",
-      "dependencies": []
-    },
-    {
       "name": "petitparser",
       "version": "7.0.2",
       "dependencies": [
@@ -1232,15 +1241,6 @@
       "version": "1.4.0",
       "dependencies": [
         "collection"
-      ]
-    },
-    {
-      "name": "android_intent_plus",
-      "version": "6.1.0",
-      "dependencies": [
-        "flutter",
-        "meta",
-        "platform"
       ]
     }
   ],

@@ -8,13 +8,72 @@ class CognitiveLoadResult {
   final LoadLevel level;
   final List<String> alerts; // human-readable warnings / recommendations
 
+  /// Why readiness is what it is (null when no physiology is available).
+  final ReadinessBreakdown? breakdown;
+
   CognitiveLoadResult({
     required this.workloadScore,
     required this.readinessScore,
     required this.combinedLoad,
     required this.level,
     required this.alerts,
+    this.breakdown,
   });
+}
+
+/// One weighted input to the readiness model, with how many of its available
+/// points the user actually earned today.
+class ReadinessFactor {
+  final String name;
+  final double weight; // maximum points this factor can contribute
+  final double achieved; // points actually earned (0..weight)
+  final String actual; // e.g. "4.2 h"
+  final String target; // e.g. "7.3 h"
+
+  const ReadinessFactor({
+    required this.name,
+    required this.weight,
+    required this.achieved,
+    required this.actual,
+    required this.target,
+  });
+
+  /// Points lost against this factor's maximum — how much it hurt readiness.
+  double get lost => weight - achieved;
+
+  /// 0..1, for progress bars.
+  double get fraction => weight == 0 ? 0 : achieved / weight;
+}
+
+/// Explainable decomposition of a readiness score.
+class ReadinessBreakdown {
+  final double readiness;
+  final List<ReadinessFactor> factors;
+
+  /// True when personal 14-day targets were used instead of population norms.
+  final bool personalised;
+
+  const ReadinessBreakdown({
+    required this.readiness,
+    required this.factors,
+    required this.personalised,
+  });
+
+  /// The factor that cost the most points — the main reason readiness is down.
+  ReadinessFactor get weakest =>
+      factors.reduce((a, b) => a.lost >= b.lost ? a : b);
+
+  /// One sentence a non-technical user can act on.
+  String get summary {
+    final w = weakest;
+    if (w.lost < 3) {
+      return 'All your signals are close to target — nothing is holding your '
+          'readiness back today.';
+    }
+    return 'Your readiness is mainly held back by '
+        '${w.name.toLowerCase()} (−${w.lost.round()} points): '
+        '${w.actual} against a target of ${w.target}.';
+  }
 }
 
 enum LoadLevel { safe, elevated, high, overload }
@@ -64,6 +123,13 @@ class CognitiveLoadEngine {
   /// norm and the user's own 14-day rolling average (report section 2.4.4).
   /// Without history it falls back to the population norms alone.
   double computeReadiness(PhysiologicalSnapshot p,
+          {PhysiologicalBaseline? baseline}) =>
+      explainReadiness(p, baseline: baseline).readiness;
+
+  /// Same model as [computeReadiness], but keeps each factor's contribution so
+  /// the app can explain *why* readiness is what it is instead of showing an
+  /// unexplained number (explainable AI).
+  ReadinessBreakdown explainReadiness(PhysiologicalSnapshot p,
       {PhysiologicalBaseline? baseline}) {
     final personal = baseline != null && baseline.isReliable;
 
@@ -83,12 +149,45 @@ class CognitiveLoadEngine {
     // Activity: some movement is good; cap the benefit.
     final stepScore = (p.steps / 8000.0).clamp(0.0, 1.0);
 
-    final readiness = (sleepScore * 0.40 +
-            hrvScore * 0.30 +
-            hrScore * 0.20 +
-            stepScore * 0.10) *
-        100;
-    return readiness.clamp(0.0, 100.0);
+    final factors = <ReadinessFactor>[
+      ReadinessFactor(
+        name: 'Sleep',
+        weight: 40,
+        achieved: sleepScore * 40,
+        actual: '${p.sleepHours.toStringAsFixed(1)} h',
+        target: '${sleepTarget.toStringAsFixed(1)} h',
+      ),
+      ReadinessFactor(
+        name: 'HRV',
+        weight: 30,
+        achieved: hrvScore * 30,
+        actual: '${p.hrv.toStringAsFixed(0)} ms',
+        target: '${hrvTarget.toStringAsFixed(0)} ms',
+      ),
+      ReadinessFactor(
+        name: 'Resting HR',
+        weight: 20,
+        achieved: hrScore * 20,
+        actual: '${p.heartRate.toStringAsFixed(0)} bpm',
+        target: '${hrAnchor.toStringAsFixed(0)} bpm',
+      ),
+      ReadinessFactor(
+        name: 'Activity',
+        weight: 10,
+        achieved: stepScore * 10,
+        actual: '${p.steps} steps',
+        target: '8000 steps',
+      ),
+    ];
+
+    final readiness =
+        factors.fold(0.0, (sum, f) => sum + f.achieved).clamp(0.0, 100.0);
+
+    return ReadinessBreakdown(
+      readiness: readiness,
+      factors: factors,
+      personalised: personal,
+    );
   }
 
   /// Fuse schedule demand and physiological readiness into one 0-100 signal.
@@ -102,9 +201,10 @@ class CognitiveLoadEngine {
     PhysiologicalSnapshot? snapshot, {
     PhysiologicalBaseline? baseline,
   }) {
-    final readiness = snapshot != null
-        ? computeReadiness(snapshot, baseline: baseline)
-        : 100.0;
+    final breakdown = snapshot != null
+        ? explainReadiness(snapshot, baseline: baseline)
+        : null;
+    final readiness = breakdown?.readiness ?? 100.0;
 
     final workload = computeWorkloadScore(events);
 
@@ -132,6 +232,7 @@ class CognitiveLoadEngine {
       combinedLoad: combined,
       level: level,
       alerts: alerts,
+      breakdown: breakdown,
     );
   }
 

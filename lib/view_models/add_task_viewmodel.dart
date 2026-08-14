@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
+import '../services/task_weight_learner.dart';
 
 /// Outcome of a manual task submission.
 /// `conflict`    = the chosen time slot overlaps an existing task.
@@ -64,9 +65,15 @@ class AddTaskViewModel extends ChangeNotifier {
       return;
     }
 
-    _cognitiveLoadScore = IntensityClassifier.scoreFromTitle(name);
+    // 🧠 Personalised score: uses the weights learned from this user's own
+    // manual NASA-TLX ratings, falling back to the shared keyword model.
+    _cognitiveLoadScore = TaskWeightLearner.instance.scoreFor(name);
     notifyListeners();
   }
+
+  /// Why the current score was given (explainable AI, shown under the score).
+  String get scoreExplanation =>
+      TaskWeightLearner.instance.explain(_taskName);
 
   void setDate(DateTime date) { _selectedDate = date; notifyListeners(); }
   void setStartTime(TimeOfDay time) { _startTime = time; notifyListeners(); }
@@ -75,6 +82,10 @@ class AddTaskViewModel extends ChangeNotifier {
   void setManualScore(int score) {
     _cognitiveLoadScore = score;
     _ratingType = 'Manual (NASA-TLX)';
+    // 🧠 Every manual rating is a labelled training example: this title was
+    // really worth this load. Teach the personal model so future tasks with
+    // the same words are scored the way THIS user experiences them.
+    TaskWeightLearner.instance.learn(_taskName, score);
     notifyListeners();
   }
 

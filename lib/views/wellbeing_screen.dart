@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/app_state.dart';
+import '../services/cognitive_load_engine.dart';
 import '../theme/app_theme.dart';
 import '../widgets/assistant_bubble.dart';
 
@@ -31,6 +32,10 @@ class WellbeingScreen extends StatelessWidget {
                   baselineReliable: baseline?.isReliable ?? false,
                 ),
                 const SizedBox(height: 16),
+                if (state.result?.breakdown != null)
+                  _WhyCard(breakdown: state.result!.breakdown!),
+                if (state.result?.breakdown != null)
+                  const SizedBox(height: 16),
                 const AssistantBubble(),
                 const SizedBox(height: 16),
                 _AiThresholdCard(state: state),
@@ -496,6 +501,115 @@ class _AiThresholdCard extends StatelessWidget {
           Text(t.explanation,
               style: const TextStyle(
                   fontSize: 12, color: AppTheme.inkSoft, height: 1.4)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Explains WHY readiness is what it is: the one-line reason plus each
+/// weighted factor's contribution, so the score is never an unexplained number.
+class _WhyCard extends StatelessWidget {
+  final ReadinessBreakdown breakdown;
+  const _WhyCard({required this.breakdown});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.violet.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lightbulb_outline_rounded,
+                    color: AppTheme.violet, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Why this score?',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.ink)),
+              ),
+              if (breakdown.personalised)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.indigo.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: const Text('personalised',
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.indigo)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(breakdown.summary,
+              style: const TextStyle(
+                  fontSize: 13, height: 1.4, color: AppTheme.ink)),
+          const SizedBox(height: 14),
+          // Each weighted factor: points earned out of points available.
+          ...breakdown.factors.map((f) {
+            final worst = f.name == breakdown.weakest.name && f.lost >= 3;
+            final color = worst ? AppTheme.warning : AppTheme.indigo;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 78,
+                        child: Text(f.name,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    worst ? FontWeight.bold : FontWeight.w500,
+                                color: AppTheme.ink)),
+                      ),
+                      Expanded(
+                        child: Text('${f.actual}  (target ${f.target})',
+                            style: const TextStyle(
+                                fontSize: 11, color: AppTheme.inkFaint)),
+                      ),
+                      Text(
+                          '${f.achieved.round()}/${f.weight.round()}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: color)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: f.fraction,
+                      minHeight: 5,
+                      backgroundColor: AppTheme.surfaceAlt,
+                      valueColor: AlwaysStoppedAnimation(color),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
