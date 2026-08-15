@@ -28,6 +28,14 @@ class AvatarView extends StatefulWidget {
   /// Robo's "Wave"/"Dance"). Ignored by models without animations.
   final String? animationName;
 
+  /// Increment to make the character turn a full circle on the spot. The turn
+  /// happens inside the 3D scene (the camera orbits the model), because a
+  /// Flutter-side 3D transform cannot be applied to the WebView that hosts it.
+  final int spinToken;
+
+  /// How long one full turn takes, in milliseconds.
+  final int spinDurationMs;
+
   /// Kept for call-site compatibility; every avatar is 3D now.
   final bool threeD;
 
@@ -39,6 +47,8 @@ class AvatarView extends StatefulWidget {
     this.allowSpin = false,
     this.autoRotate = false,
     this.animationName,
+    this.spinToken = 0,
+    this.spinDurationMs = 1100,
     this.threeD = true,
   });
 
@@ -53,6 +63,53 @@ class _AvatarViewState extends State<AvatarView> {
   void didUpdateWidget(covariant AvatarView old) {
     super.didUpdateWidget(old);
     if (widget.animationName != old.animationName) _applyClip();
+    if (widget.spinToken != old.spinToken && widget.spinToken > 0) _spin();
+  }
+
+  /// Turn the character a full 360° by orbiting the scene camera.
+  ///
+  /// Rotating on the Flutter side is not an option: the model is rendered in a
+  /// WebView, and iOS cannot composite a platform view under a perspective or
+  /// otherwise non-affine matrix — the whole avatar simply stops being drawn.
+  /// The spin is therefore handed to the page, which owns a real 3D camera.
+  /// One JavaScript call drives the entire turn with `requestAnimationFrame`,
+  /// so the animation stays smooth without a per-frame bridge crossing.
+  Future<void> _spin() async {
+    final controller = _web;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript('''
+        (function () {
+          var mv = document.querySelector('model-viewer');
+          if (!mv || mv.__spinning) return;
+          var orbit;
+          try { orbit = mv.getCameraOrbit(); } catch (e) { return; }
+          var deg = 180 / Math.PI;
+          var start = orbit.theta * deg;
+          var phi = orbit.phi * deg;
+          var duration = ${widget.spinDurationMs};
+          mv.__spinning = true;
+          var t0 = null;
+          function step(now) {
+            if (t0 === null) t0 = now;
+            var p = Math.min((now - t0) / duration, 1);
+            // ease in-out, so the turn starts and settles softly
+            var e = p < 0.5
+              ? 2 * p * p
+              : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            mv.cameraOrbit = (start + e * 360) + 'deg ' + phi + 'deg auto';
+            if (p < 1) {
+              requestAnimationFrame(step);
+            } else {
+              mv.__spinning = false;
+            }
+          }
+          requestAnimationFrame(step);
+        })();
+      ''');
+    } catch (_) {
+      // Page not ready — skip this turn rather than break the reaction.
+    }
   }
 
   /// Switch the playing clip *inside* the viewer that is already on screen.

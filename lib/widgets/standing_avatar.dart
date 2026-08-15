@@ -38,8 +38,11 @@ class _StandingAvatarState extends State<StandingAvatar>
   final math.Random _rng = math.Random();
   int _seqToken = 0;   // cancels an in-flight sequence when a new one starts
   int _lastSeq = -1;   // avoids repeating the same performance twice
+  int _spinToken = 0;  // bumped to make the 3D camera turn the character round
   String _clip = 'idle';        // animation clip for models that have them
   _Reaction _reaction = _Reaction.hop;
+
+  static const Duration _twirlDuration = Duration(milliseconds: 1100);
 
   @override
   void initState() {
@@ -69,7 +72,7 @@ class _StandingAvatarState extends State<StandingAvatar>
     if (!mounted) return;
     // Each action has its own natural tempo.
     _react.duration = switch (r) {
-      _Reaction.twirl => const Duration(milliseconds: 1100),
+      _Reaction.twirl => _twirlDuration,
       _Reaction.stretch => const Duration(milliseconds: 1200),
       _Reaction.look => const Duration(milliseconds: 1600),
       _Reaction.wave => const Duration(milliseconds: 1200),
@@ -79,6 +82,9 @@ class _StandingAvatarState extends State<StandingAvatar>
     setState(() {
       _reaction = r;
       _clip = mood;
+      // The turn is performed by the scene camera inside the 3D view, not by
+      // a Flutter transform — see AvatarView._spin.
+      if (r == _Reaction.twirl) _spinToken++;
     });
     await _react.forward(from: 0);
     if (mounted) setState(() => _clip = 'idle');
@@ -202,7 +208,7 @@ class _StandingAvatarState extends State<StandingAvatar>
 
         // --- reaction ---
         final t = _react.value;
-        double dx = 0, dy = 0, rot = 0, sx = 1, sy = 1, turn = 0;
+        double dx = 0, dy = 0, rot = 0, sx = 1, sy = 1;
         if (_react.isAnimating || t > 0) {
           switch (_reaction) {
             case _Reaction.hop:
@@ -234,8 +240,8 @@ class _StandingAvatarState extends State<StandingAvatar>
               dx = math.sin(t * math.pi * 2) * 10;
               rot = math.sin(t * math.pi * 2) * 0.07;
             case _Reaction.twirl:
-              // full turn on the spot
-              turn = t * math.pi * 2;
+              // The 360° turn itself is done by the 3D camera; here we only
+              // add the little hop that sells it.
               dy = -math.sin(t * math.pi) * 10;
             case _Reaction.cheer:
               // excited double bounce with a happy wiggle
@@ -246,25 +252,16 @@ class _StandingAvatarState extends State<StandingAvatar>
           }
         }
 
-        Widget content = Transform.scale(
+        // Everything applied here stays affine (translate / rotate / scale).
+        // A perspective or Y-axis matrix would make iOS refuse to composite the
+        // WebView that hosts the model, blanking the avatar for the whole
+        // animation — which is why the twirl is handled by the 3D camera.
+        final Widget content = Transform.scale(
           scaleX: sx,
           scaleY: sy * idleScaleY,
           alignment: Alignment.bottomCenter,
           child: child,
         );
-
-        // Twirl. The model is a platform view (WebView): iOS cannot composite
-        // it under a perspective / non-affine matrix, and a true rotateY also
-        // makes it edge-on — zero width — at 90°, so it vanished mid-spin. The
-        // turn is faked with a horizontal squash that never fully collapses.
-        if (turn != 0) {
-          final squash = math.max(math.cos(turn).abs(), 0.32);
-          content = Transform.scale(
-            scaleX: squash,
-            alignment: Alignment.center,
-            child: content,
-          );
-        }
 
         return Transform.translate(
           offset: Offset(dx, dy + idleLift),
@@ -430,6 +427,8 @@ class _StandingAvatarState extends State<StandingAvatar>
                       size: widget.height,
                       circle: false,
                       animationName: RpmService.clipFor(_clip),
+                      spinToken: _spinToken,
+                      spinDurationMs: _twirlDuration.inMilliseconds,
                     ),
                   ),
                 ),
