@@ -41,6 +41,7 @@ dependencies:
   flutter_tts: ^4.2.5                        # Assistant voice (text-to-speech)
   get: ^4.7.3                                # fluttermoji state
   model_viewer_plus: ^1.10.0                # Renders the 3D assistant (.glb)
+  webview_flutter: ^4.13.1                  # Drives the live model-viewer clip
 
 dev_dependencies:
   flutter_test:

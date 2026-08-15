@@ -253,13 +253,15 @@ class _StandingAvatarState extends State<StandingAvatar>
           child: child,
         );
 
-        // Y-axis turn for the twirl (perspective keeps it from looking flat).
+        // Twirl. The model is a platform view (WebView): iOS cannot composite
+        // it under a perspective / non-affine matrix, and a true rotateY also
+        // makes it edge-on — zero width — at 90°, so it vanished mid-spin. The
+        // turn is faked with a horizontal squash that never fully collapses.
         if (turn != 0) {
-          content = Transform(
+          final squash = math.max(math.cos(turn).abs(), 0.32);
+          content = Transform.scale(
+            scaleX: squash,
             alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.0012)
-              ..rotateY(turn),
             child: content,
           );
         }

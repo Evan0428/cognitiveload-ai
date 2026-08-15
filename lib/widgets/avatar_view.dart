@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../services/rpm_service.dart';
 import '../theme/app_theme.dart';
 
@@ -8,7 +11,7 @@ import '../theme/app_theme.dart';
 ///
 /// [circle] clips it into a profile-picture circle; leave false for the
 /// free-standing character so it isn't boxed into a window.
-class AvatarView extends StatelessWidget {
+class AvatarView extends StatefulWidget {
   final double size;
   final bool circle;
   final Color? background;
@@ -40,6 +43,45 @@ class AvatarView extends StatelessWidget {
   });
 
   @override
+  State<AvatarView> createState() => _AvatarViewState();
+}
+
+class _AvatarViewState extends State<AvatarView> {
+  WebViewController? _web;
+
+  @override
+  void didUpdateWidget(covariant AvatarView old) {
+    super.didUpdateWidget(old);
+    if (widget.animationName != old.animationName) _applyClip();
+  }
+
+  /// Switch the playing clip *inside* the viewer that is already on screen.
+  ///
+  /// `ModelViewer` builds its HTML once in `initState` and has no
+  /// `didUpdateWidget`, so the only way to change a prop used to be to change
+  /// the widget key — which tore down the local HTTP proxy and the WebView and
+  /// re-downloaded the model, blanking the avatar for several seconds every
+  /// time it reacted. Driving the live `<model-viewer>` element instead keeps
+  /// the character on screen throughout.
+  Future<void> _applyClip() async {
+    final controller = _web;
+    final name = widget.animationName;
+    if (controller == null || name == null) return;
+    try {
+      await controller.runJavaScript('''
+        (function () {
+          var mv = document.querySelector('model-viewer');
+          if (!mv) return;
+          mv.setAttribute('animation-name', ${jsonEncode(name)});
+          try { mv.play(); } catch (e) {}
+        })();
+      ''');
+    } catch (_) {
+      // Page not ready yet — the attribute in the initial HTML still applies.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: RpmService.avatarUrl,
@@ -48,31 +90,34 @@ class AvatarView extends StatelessWidget {
         final isRpm = src.contains('readyplayer.me');
 
         final model = ModelViewer(
-          // reload when the character OR its current clip changes
-          key: ValueKey('$src|$animationName'),
+          // Only a different character forces a reload; clip changes are
+          // applied in place by [_applyClip] so the model never blinks out.
+          key: ValueKey(src),
           src: src,
-          animationName: animationName,
+          animationName: widget.animationName,
           alt: 'Your 3D avatar',
-          autoRotate: autoRotate, // dashboard character faces the user
-          cameraControls: allowSpin, // drag-to-spin only in the editor preview
+          autoRotate: widget.autoRotate, // dashboard character faces the user
+          cameraControls:
+              widget.allowSpin, // drag-to-spin only in the editor preview
           disableZoom: true,
           autoPlay: true, // play the model's built-in animation
           // RPM avatars are full-body → frame head/shoulders for profile pics.
-          cameraOrbit: isRpm && circle ? '0deg 78deg 2.2m' : null,
-          cameraTarget: isRpm && circle ? '0m 1.5m 0m' : null,
+          cameraOrbit: isRpm && widget.circle ? '0deg 78deg 2.2m' : null,
+          cameraTarget: isRpm && widget.circle ? '0m 1.5m 0m' : null,
           backgroundColor: const Color(0x00000000),
+          onWebViewCreated: (controller) => _web = controller,
         );
 
-        if (!circle) {
-          return SizedBox(width: size, height: size, child: model);
+        if (!widget.circle) {
+          return SizedBox(width: widget.size, height: widget.size, child: model);
         }
 
         return Container(
-          width: size,
-          height: size,
+          width: widget.size,
+          height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: background ?? AppTheme.surfaceAlt,
+            color: widget.background ?? AppTheme.surfaceAlt,
           ),
           child: ClipOval(child: model),
         );
