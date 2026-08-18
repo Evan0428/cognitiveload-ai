@@ -561,7 +561,9 @@ class _SettingsViewState extends State<SettingsView> {
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF1F5F9), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     icon: const Icon(Icons.logout_rounded, color: Color(0xFF64748B)),
                     label: const Text('Sign Out', style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-                    onPressed: () => FirebaseAuth.instance.signOut(),
+                    // This is now the only way out of the account, so confirm
+                    // first rather than signing out on a stray tap.
+                    onPressed: _confirmAndSignOut,
                   ),
                 ),
               ),
@@ -571,6 +573,40 @@ class _SettingsViewState extends State<SettingsView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmAndSignOut() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFF6366F1)),
+            SizedBox(width: 8),
+            Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await FirebaseAuth.instance.signOut();
+            },
+            child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

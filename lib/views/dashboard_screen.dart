@@ -148,40 +148,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     LoadLevel.overload => const Color(0xFFF44336),
   };
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.logout, color: Color(0xFF6366F1)),
-            SizedBox(width: 8),
-            Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await FirebaseAuth.instance.signOut();
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _editTask(ScheduleEvent event) {
     Navigator.push(
       context,
@@ -297,15 +263,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Greeting on the left, profile picture on the right.
+                // Signing out lives in Settings only, so the header stays calm.
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 26),
-                      onPressed: () => _showLogoutDialog(context),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _realName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 12),
                     // 🧑‍🎨 Virtual avatar (Chua) — tap to create / edit.
                     GestureDetector(
                       onTap: () async {
@@ -325,19 +303,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 10),
-
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Welcome back,', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      const SizedBox(height: 2),
-                      Text(_realName, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 24),
 
