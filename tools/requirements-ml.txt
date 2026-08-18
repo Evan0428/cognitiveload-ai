@@ -1,0 +1,5 @@
+# Training-time only. None of this ships in the app — the phone runs the
+# exported .tflite through the tflite_flutter plugin.
+numpy>=1.24
+scipy>=1.10
+tensorflow>=2.15

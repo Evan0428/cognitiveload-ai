@@ -15,6 +15,7 @@ import 'cognitive_load_engine.dart';
 import 'health_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
+import 'stress_model.dart';
 import 'task_weight_learner.dart';
 
 class AppState extends ChangeNotifier {
@@ -124,6 +125,7 @@ class AppState extends ChangeNotifier {
 
     await _load();
     await TaskWeightLearner.instance.load(); // personalised task weights
+    await StressModel.instance.load(); // TFLite stress model (no-op if absent)
     await syncTasksFromFirestore();
     _listenToUserProfile(FirebaseAuth.instance.currentUser?.uid);
     await syncPhysiologyFromFirestore();
@@ -308,7 +310,14 @@ class AppState extends ChangeNotifier {
 
     // Always analyse — the engine still computes physiological readiness with
     // no tasks, so the Wellbeing screen shows a live score on a rest day.
-    _result = engine.analyse(todayEvents, _snapshot, baseline: baseline);
+    //
+    // The TFLite stress model is consulted when it is loaded; until it has been
+    // trained this is null and the engine uses its rule-based scoring alone.
+    final stress = _snapshot == null
+        ? null
+        : StressModel.instance.probability(_snapshot!, baseline: baseline);
+    _result = engine.analyse(todayEvents, _snapshot,
+        baseline: baseline, stressProbability: stress);
     final r = _result!;
 
     // Focus Lock suppresses non-critical (high) alerts — only a dangerously

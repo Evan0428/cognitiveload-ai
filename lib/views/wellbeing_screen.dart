@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/app_state.dart';
 import '../services/cognitive_load_engine.dart';
+import '../services/stress_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/assistant_bubble.dart';
 
@@ -36,6 +37,11 @@ class WellbeingScreen extends StatelessWidget {
                   _WhyCard(breakdown: state.result!.breakdown!),
                 if (state.result?.breakdown != null)
                   const SizedBox(height: 16),
+                // Only shown once the TFLite model has been trained and bundled.
+                if (state.result?.stressProbability != null) ...[
+                  _StressCard(probability: state.result!.stressProbability!),
+                  const SizedBox(height: 16),
+                ],
                 const AssistantBubble(),
                 const SizedBox(height: 16),
                 _AiThresholdCard(state: state),
@@ -202,6 +208,71 @@ class _ReadinessHeader extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.65),
                 fontSize: 11,
                 fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Output of the on-device TensorFlow Lite classifier trained on WESAD.
+///
+/// Kept visually distinct from the readiness cards: this number comes from a
+/// neural network trained on labelled physiological data, not from the app's
+/// own weighted rules, and the user should be able to tell the two apart.
+class _StressCard extends StatelessWidget {
+  final double probability;
+  const _StressCard({required this.probability});
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (probability * 100).round();
+    final high = probability >= 0.7;
+    final accent = high ? const Color(0xFFF44336) : AppTheme.indigo;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: high ? accent : AppTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.monitor_heart_outlined, size: 18, color: accent),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Stress pattern',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.ink)),
+              ),
+              Text('$percent%',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 18, color: accent)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              value: probability.clamp(0.0, 1.0),
+              minHeight: 7,
+              backgroundColor: AppTheme.surfaceAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(StressModel.describe(probability),
+              style: const TextStyle(
+                  fontSize: 12, height: 1.35, color: AppTheme.inkSoft)),
+          const SizedBox(height: 6),
+          const Text(
+            'On-device neural network, trained on the WESAD wearable-stress '
+            'dataset. Your data never leaves the phone.',
+            style: TextStyle(fontSize: 11, color: AppTheme.inkFaint),
           ),
         ],
       ),

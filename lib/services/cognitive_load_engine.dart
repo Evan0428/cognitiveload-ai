@@ -11,6 +11,10 @@ class CognitiveLoadResult {
   /// Why readiness is what it is (null when no physiology is available).
   final ReadinessBreakdown? breakdown;
 
+  /// Learned probability of acute physiological stress from the on-device
+  /// TensorFlow Lite model, or null when that model isn't available.
+  final double? stressProbability;
+
   CognitiveLoadResult({
     required this.workloadScore,
     required this.readinessScore,
@@ -18,6 +22,7 @@ class CognitiveLoadResult {
     required this.level,
     required this.alerts,
     this.breakdown,
+    this.stressProbability,
   });
 }
 
@@ -196,10 +201,15 @@ class CognitiveLoadEngine {
   /// from physiological readiness ("energy management", not just time
   /// management — Chua's Objective 2). Readiness is always reported so the
   /// Wellbeing screen shows it even on a task-free day.
+  /// [stressProbability] is the on-device TensorFlow Lite model's estimate
+  /// (0..1) that the user is acutely stressed. It is optional: when the model
+  /// has not been trained or fails to load, the engine falls back to its
+  /// rule-based scoring alone and behaves exactly as before.
   CognitiveLoadResult analyse(
     List<ScheduleEvent> events,
     PhysiologicalSnapshot? snapshot, {
     PhysiologicalBaseline? baseline,
+    double? stressProbability,
   }) {
     final breakdown = snapshot != null
         ? explainReadiness(snapshot, baseline: baseline)
@@ -213,7 +223,13 @@ class CognitiveLoadEngine {
 
     // Capacity factor: 1.0 when fully recovered (readiness 100), up to 1.6 when
     // fully depleted (readiness 0). No tasks -> workloadNorm 0 -> combined 0.
-    final capacityFactor = 1 + (1 - readiness / 100) * 0.6;
+    //
+    // The learned stress probability adds up to a further 0.25. The readiness
+    // score reads HR and HRV through weights we chose by hand; the network
+    // reads the same two signals through weights learned from labelled data,
+    // so it can recognise a stressed pattern that the linear rules miss.
+    final learnedStrain = (stressProbability ?? 0.0).clamp(0.0, 1.0) * 0.25;
+    final capacityFactor = 1 + (1 - readiness / 100) * 0.6 + learnedStrain;
     final combined = (workloadNorm * capacityFactor).clamp(0.0, 100.0);
 
     final level = switch (combined) {
@@ -226,6 +242,11 @@ class CognitiveLoadEngine {
     final alerts =
         _buildAlerts(events, workload, readiness, snapshot, baseline, level);
 
+    if (stressProbability != null && stressProbability >= 0.7) {
+      alerts.add(
+          'Stress pattern detected: the on-device model puts your heart-rate and HRV pattern at ${(stressProbability * 100).round()}% match to a stressed state. Consider a recovery break.');
+    }
+
     return CognitiveLoadResult(
       workloadScore: workload,
       readinessScore: readiness,
@@ -233,6 +254,7 @@ class CognitiveLoadEngine {
       level: level,
       alerts: alerts,
       breakdown: breakdown,
+      stressProbability: stressProbability,
     );
   }
 
