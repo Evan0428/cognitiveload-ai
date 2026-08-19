@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Python training environment for the TFLite stress model (~1GB, do not commit)
+mlenv/
+tools/__pycache__/
