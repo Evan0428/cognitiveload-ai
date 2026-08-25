@@ -289,12 +289,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wall-clock duration of the most recent [refreshPhysiology] cycle.
+  ///
+  /// NFR-P1 requires a readiness update within 2 seconds. Timing it here
+  /// captures the figure that actually matters — HealthKit retrieval plus
+  /// persistence plus recomputation on a real handset — rather than the
+  /// computation alone, which unit tests already measure in microseconds.
+  Duration? lastRefreshDuration;
+
   Future<void> refreshPhysiology() async {
+    final watch = Stopwatch()..start();
     await health.requestPermissions();
     _snapshot = await health.fetchLatest();
     await _saveSnapshot();
     _recompute();
     _learnFromHistory();
+    watch.stop();
+    lastRefreshDuration = watch.elapsed;
+    debugPrint('[NFR-P1] Physiology refresh cycle: '
+        '${watch.elapsedMilliseconds} ms');
     notifyListeners();
   }
 
