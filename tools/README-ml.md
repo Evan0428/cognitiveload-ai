@@ -17,11 +17,32 @@ Marberger & Van Laerhoven, *ICMI 2018*).
 
 - 15 subjects, chest sensor (RespiBAN) + wrist sensor (Empatica E4)
 - Conditions: baseline, stress (Trier Social Stress Test), amusement, meditation
-- Free for research use; the dataset page is hosted by Universität Siegen —
-  search for "WESAD dataset Siegen" and follow the download link there
-- **Roughly 18 GB.** Budget time and disk space.
+- Free for research use
 
-Extract it so the folder structure looks like:
+Dataset page: <https://ubi29.informatik.uni-siegen.de/usi/data_wesad.html>
+
+Direct download (verified — returns `WESAD.zip`, `application/zip`, 2,249,444,501
+bytes ≈ 2.25 GB):
+
+```
+https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download
+```
+
+The page also lists a second share link (`.../s/pYjSgfOVs6Ntahr`) which now
+returns 404, as does the older `ubicomp.eti.uni-siegen.de/home/datasets/icmi18/`
+path that many papers cite. Use the link above. Mirrors exist on the UCI
+Machine Learning Repository (dataset 465) and Kaggle if Siegen is unreachable
+from your network.
+
+Download with a resumable client — a dropped connection two hours in is
+otherwise a full restart:
+
+```bash
+curl -L -C - -o WESAD.zip "https://uni-siegen.sciebo.de/s/HGdUkoNlW1Ub0Gx/download"
+```
+
+The archive expands to substantially more than 2.25 GB (the pickles hold 700 Hz
+float signals), so leave room. Extract it so the folder structure looks like:
 
 ```
 WESAD/
