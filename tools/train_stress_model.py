@@ -105,6 +105,16 @@ def detect_r_peaks(ecg, fs=FS):
     return peaks
 
 
+# Reject RR intervals deviating more than this from the window's median.
+# Standard ectopic-beat correction: a missed detection produces an interval of
+# roughly twice the true length, which passes any fixed plausibility range and
+# inflates SDNN far more than any real autonomic change. Measured on WESAD S2,
+# omitting this step reverses the expected relationship — stress appeared to
+# *raise* HRV (89.5 ms vs 77.9 ms, peaking at an implausible 220 ms). With it,
+# the relationship is correct (58.9 ms vs 62.5 ms, peak 88.7 ms).
+RR_TOLERANCE = 0.20
+
+
 def hr_hrv(ecg, fs=FS):
     """Mean heart rate (bpm) and HRV as SDNN (ms) for one window.
 
@@ -116,6 +126,12 @@ def hr_hrv(ecg, fs=FS):
 
     rr = np.diff(peaks) / fs                       # seconds between beats
     rr = rr[(rr > 0.3) & (rr < 2.0)]               # drop implausible intervals
+    if len(rr) < 5:
+        return None, None
+
+    # Artefact correction — see RR_TOLERANCE above.
+    median = np.median(rr)
+    rr = rr[np.abs(rr - median) <= RR_TOLERANCE * median]
     if len(rr) < 5:
         return None, None
 

@@ -1,0 +1,145 @@
+{
+  "dataset": "WESAD (Schmidt et al., ICMI 2018)",
+  "subjects": 15,
+  "windows": 3040,
+  "stress_windows": 904,
+  "features": [
+    "hr",
+    "sdnn",
+    "hr_ratio",
+    "sdnn_ratio"
+  ],
+  "window_seconds": 60,
+  "protocol": "binary: stress vs. (baseline + amusement)",
+  "loso_folds": [
+    {
+      "accuracy": 0.8421052631578947,
+      "precision": 0.9714285714285714,
+      "recall": 0.5151515151515151,
+      "f1": 0.6732673267326732,
+      "subject": "S10",
+      "windows": 209
+    },
+    {
+      "accuracy": 0.9219512195121952,
+      "precision": 0.7948717948717948,
+      "recall": 1.0,
+      "f1": 0.8857142857142858,
+      "subject": "S11",
+      "windows": 205
+    },
+    {
+      "accuracy": 0.9754901960784313,
+      "precision": 0.9365079365079365,
+      "recall": 0.9833333333333333,
+      "f1": 0.9593495934959351,
+      "subject": "S13",
+      "windows": 204
+    },
+    {
+      "accuracy": 0.8823529411764706,
+      "precision": 0.7176470588235294,
+      "recall": 1.0,
+      "f1": 0.8356164383561643,
+      "subject": "S14",
+      "windows": 204
+    },
+    {
+      "accuracy": 0.7073170731707317,
+      "precision": 1.0,
+      "recall": 0.047619047619047616,
+      "f1": 0.0909090909090909,
+      "subject": "S15",
+      "windows": 205
+    },
+    {
+      "accuracy": 0.8529411764705882,
+      "precision": 0.6739130434782609,
+      "recall": 1.0,
+      "f1": 0.8051948051948052,
+      "subject": "S16",
+      "windows": 204
+    },
+    {
+      "accuracy": 0.9090909090909091,
+      "precision": 0.7764705882352941,
+      "recall": 1.0,
+      "f1": 0.8741721854304636,
+      "subject": "S17",
+      "windows": 209
+    },
+    {
+      "accuracy": 0.8092783505154639,
+      "precision": 0.9090909090909091,
+      "recall": 0.36363636363636365,
+      "f1": 0.5194805194805195,
+      "subject": "S2",
+      "windows": 194
+    },
+    {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "subject": "S3",
+      "windows": 197
+    },
+    {
+      "accuracy": 0.8737373737373737,
+      "precision": 1.0,
+      "recall": 0.5614035087719298,
+      "f1": 0.7191011235955056,
+      "subject": "S4",
+      "windows": 198
+    },
+    {
+      "accuracy": 0.9753694581280788,
+      "precision": 1.0,
+      "recall": 0.9137931034482759,
+      "f1": 0.9549549549549551,
+      "subject": "S5",
+      "windows": 203
+    },
+    {
+      "accuracy": 0.8168316831683168,
+      "precision": 0.8055555555555556,
+      "recall": 0.4915254237288136,
+      "f1": 0.6105263157894737,
+      "subject": "S6",
+      "windows": 202
+    },
+    {
+      "accuracy": 0.7810945273631841,
+      "precision": 1.0,
+      "recall": 0.2413793103448276,
+      "f1": 0.3888888888888889,
+      "subject": "S7",
+      "windows": 201
+    },
+    {
+      "accuracy": 0.9852216748768473,
+      "precision": 0.953125,
+      "recall": 1.0,
+      "f1": 0.976,
+      "subject": "S8",
+      "windows": 203
+    },
+    {
+      "accuracy": 0.7821782178217822,
+      "precision": 0.6666666666666666,
+      "recall": 0.4827586206896552,
+      "f1": 0.56,
+      "subject": "S9",
+      "windows": 202
+    }
+  ],
+  "loso_accuracy_mean": 0.8743306709512176,
+  "loso_accuracy_std": 0.08413675414843272,
+  "loso_precision_mean": 0.8803518083105678,
+  "loso_precision_std": 0.12317807397632956,
+  "loso_recall_mean": 0.7067066817815841,
+  "loso_recall_std": 0.32232678351808214,
+  "loso_f1_mean": 0.7235450352361841,
+  "loso_f1_std": 0.24677417378063218,
+  "tflite_bytes": 3572
+}
