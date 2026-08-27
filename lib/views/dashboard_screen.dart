@@ -13,6 +13,7 @@ import '../services/avatar_service.dart';
 import '../services/rpm_service.dart';
 import '../widgets/assistant_bubble.dart';
 import '../widgets/standing_avatar.dart';
+import '../widgets/threshold_feedback_dialog.dart';
 import 'settings_view.dart';
 import 'task_manager_view.dart';
 import 'schedule_screen.dart';
@@ -191,13 +192,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: null,
       backgroundColor: const Color(0xFFF8FAFC),
-      body: Stack(
-        children: [
-          IndexedStack(index: _currentIndex, children: _tabs),
-          // 🧍 The 3D assistant stands free over the UI on every tab, and can
-          // be dragged anywhere so it never blocks a button.
-          _buildDraggableAssistant(context),
-        ],
+      // 🧠 Asks once, the moment an alert fires, whether the warning was
+      // useful — the explicit training signal for the adaptive threshold.
+      body: ThresholdFeedbackHost(
+        child: Stack(
+          children: [
+            IndexedStack(index: _currentIndex, children: _tabs),
+            // 🧍 The 3D assistant stands free over the UI on every tab, and can
+            // be dragged anywhere so it never blocks a button.
+            _buildDraggableAssistant(context),
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

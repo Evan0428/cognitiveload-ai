@@ -414,10 +414,15 @@ class AppState extends ChangeNotifier {
           'CognitiveLoad AI - ${r.level.label}',
           r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
         );
+        // Ask for the training signal at the moment the alert fires, once.
+        _awaitingThresholdFeedback = true;
+        _feedbackLevel = r.level;
       }
     } else {
-      // Back in the safe zone: allow the next escalation to notify again.
+      // Back in the safe zone: allow the next escalation to notify again, and
+      // retire any question the user never got round to answering.
       _lastNotifiedLevel = null;
+      _awaitingThresholdFeedback = false;
     }
 
       // 🔴 Build the Real Load Threat Alert function
@@ -542,8 +547,24 @@ class AppState extends ChangeNotifier {
 
   // ---------------- AI adaptive threshold ----------------
 
+  /// True when an alert has just fired and the user has not yet said whether
+  /// it was useful. The shell turns this into one modal question.
+  ///
+  /// This is raised in exactly the same place the notification is sent, so the
+  /// user is asked once per alert episode rather than once per tap on the
+  /// assistant — repeated answers to a single alert would feed the same event
+  /// into the learner many times and corrupt the estimate.
+  bool _awaitingThresholdFeedback = false;
+  bool get awaitingThresholdFeedback => _awaitingThresholdFeedback;
+
+  /// The level that raised the outstanding question, for the dialog wording.
+  LoadLevel? _feedbackLevel;
+  LoadLevel? get feedbackLevel => _feedbackLevel;
+
   /// User answered an alert: "I'm fine" — the warning was too eager.
   Future<void> thresholdFeedbackDismissed() async {
+    if (!_awaitingThresholdFeedback) return; // already answered
+    _awaitingThresholdFeedback = false;
     _threshold.alertDismissed();
     await _saveThreshold();
     _recompute();
@@ -552,9 +573,19 @@ class AppState extends ChangeNotifier {
 
   /// User answered an alert: "I'll rest" — the warning was useful.
   Future<void> thresholdFeedbackAccepted() async {
+    if (!_awaitingThresholdFeedback) return; // already answered
+    _awaitingThresholdFeedback = false;
     _threshold.alertAccepted();
     await _saveThreshold();
     _recompute();
+    notifyListeners();
+  }
+
+  /// User closed the question without answering — no training signal, but the
+  /// question is spent and must not reappear until the next alert.
+  void thresholdFeedbackIgnored() {
+    if (!_awaitingThresholdFeedback) return;
+    _awaitingThresholdFeedback = false;
     notifyListeners();
   }
 
@@ -575,12 +606,20 @@ class AppState extends ChangeNotifier {
     _saveThreshold();
   }
 
+  /// Persist the learned threshold. Persistence is a side effect of learning,
+  /// never a precondition for it: if neither store is reachable the model still
+  /// holds the updated value in memory, so a failure here must not propagate
+  /// to the caller that just recorded the user's answer.
   Future<void> _saveThreshold() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('adaptiveThreshold', _threshold.encode());
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('adaptiveThreshold', _threshold.encode());
+    } catch (e) {
+      debugPrint('Adaptive threshold local save skipped: $e');
+    }
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
       await FirebaseFirestore.instance.collection('users').doc(uid).set(
           {'adaptiveThreshold': _threshold.toJson()}, SetOptions(merge: true));
     } catch (e) {

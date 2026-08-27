@@ -34,7 +34,7 @@ void main() {
     test('yields a baseline the engine will treat as reliable', () {
       final baseline = PhysiologicalBaseline.fromSnapshots(DemoSeeder.fortnight());
       expect(baseline, isNotNull);
-      expect(baseline!.isReliable, isTrue);
+      expect(baseline.isReliable, isTrue);
       expect(baseline.days, greaterThanOrEqualTo(PhysiologicalBaseline.minDays));
     });
 

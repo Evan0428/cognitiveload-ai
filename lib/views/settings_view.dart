@@ -684,6 +684,16 @@ class _SettingsViewState extends State<SettingsView> {
             ),
             onPressed: () async {
               Navigator.pop(dialogContext);
+              // Settings can be reached either as a tab inside the dashboard
+              // shell or as a route pushed from the dashboard header. In the
+              // pushed case the root swaps to the login screen underneath, but
+              // this route stays on top of the stack — so the user appears to
+              // stay signed in until they navigate back by hand. Unwinding to
+              // the root first lets AuthenticationWrapper show the login view.
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.popUntil((route) => route.isFirst);
+              }
               await FirebaseAuth.instance.signOut();
             },
             child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
