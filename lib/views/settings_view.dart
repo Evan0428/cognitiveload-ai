@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -553,6 +554,58 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               const SizedBox(height: 16),
 
+              // Debug builds only. Personalisation depends on 14 days of
+              // history that cannot be produced on demand, so a fixed
+              // synthetic fortnight can be loaded for testing and rehearsal.
+              if (kDebugMode) ...[
+                _buildCardContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.science_outlined, size: 18, color: Color(0xFFB45309)),
+                          SizedBox(width: 8),
+                          Text('Test Data (debug build only)',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Loads a fixed 14-day physiological history and a full day of tasks so '
+                        'the baseline, trend chart and alerts can be exercised immediately. '
+                        'This is synthetic data — never present it as a real recording.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: _seeding
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.download_rounded, size: 18),
+                              label: Text(_seeding ? 'Loading...' : 'Load 14 Days'),
+                              onPressed: _seeding ? null : () => _runSeed(load: true),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                              label: const Text('Clear'),
+                              onPressed: _seeding ? null : () => _runSeed(load: false),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               _buildCardContainer(
                 child: SizedBox(
                   width: double.infinity,
@@ -575,6 +628,35 @@ class _SettingsViewState extends State<SettingsView> {
         ),
       ),
     );
+  }
+
+  bool _seeding = false;
+
+  /// Load or withdraw the synthetic fortnight (debug builds only).
+  Future<void> _runSeed({required bool load}) async {
+    setState(() => _seeding = true);
+    final state = context.read<AppState>();
+    try {
+      if (load) {
+        await state.seedDemoData();
+      } else {
+        await state.clearDemoData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Test data failed: $e')));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _seeding = false);
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(load
+          ? '14 days of test data loaded. Open Wellbeing to see the trend.'
+          : 'Test data cleared.'),
+    ));
   }
 
   void _confirmAndSignOut() {

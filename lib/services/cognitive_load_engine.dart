@@ -76,9 +76,14 @@ class ReadinessBreakdown {
           'readiness back today.';
     }
     return 'Your readiness is mainly held back by '
-        '${w.name.toLowerCase()} (−${w.lost.round()} points): '
+        '${_readable(w.name)} (−${w.lost.round()} points): '
         '${w.actual} against a target of ${w.target}.';
   }
+
+  /// Lower-case a factor name for use mid-sentence, but leave acronyms alone —
+  /// "held back by hrv" reads as a typo.
+  static String _readable(String name) =>
+      name == name.toUpperCase() ? name : name.toLowerCase();
 }
 
 enum LoadLevel { safe, elevated, high, overload }

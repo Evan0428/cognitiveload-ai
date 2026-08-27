@@ -12,6 +12,7 @@ import '../models/task_model.dart';
 import '../models/user_model.dart';
 import 'adaptive_threshold.dart';
 import 'cognitive_load_engine.dart';
+import 'demo_seeder.dart';
 import 'health_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
@@ -270,6 +271,65 @@ class AppState extends ChangeNotifier {
   void removeEvent(String id) {
     _events.removeWhere((e) => e.id == id);
     _save();
+    _recompute();
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------ demonstration data
+
+  /// Load the fixed fortnight from [DemoSeeder] so the baseline, the trend
+  /// chart and the personalised targets can be exercised without waiting two
+  /// weeks for real history to accumulate.
+  ///
+  /// Development and rehearsal aid only — it is reachable from a debug build,
+  /// and [clearDemoData] removes everything it writes. The data is synthetic
+  /// and must never be presented as a recording.
+  Future<void> seedDemoData({bool withTasks = true}) async {
+    _history
+      ..clear()
+      ..addAll(DemoSeeder.fortnight());
+    _snapshot = DemoSeeder.today();
+
+    if (withTasks) {
+      _events.removeWhere((e) => e.id.startsWith(DemoSeeder.tag));
+      _events.addAll(DemoSeeder.todayTasks());
+      await _save();
+    }
+
+    // Persists the snapshot, rewrites the rolling history and mirrors the day
+    // to Firestore, exactly as a real sync would.
+    await _saveSnapshot();
+    _recompute();
+    notifyListeners();
+  }
+
+  /// Withdraw everything [seedDemoData] wrote, locally and in the cloud.
+  Future<void> clearDemoData() async {
+    _history.clear();
+    _snapshot = null;
+    _events.removeWhere((e) => e.id.startsWith(DemoSeeder.tag));
+    await _save();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('snapshotHistory');
+    await prefs.remove('snapshot');
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      try {
+        final collection = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('physiology');
+        final docs = await collection.get();
+        for (final doc in docs.docs) {
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        debugPrint('Demo cloud cleanup failed: $e');
+      }
+    }
+
     _recompute();
     notifyListeners();
   }
