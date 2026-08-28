@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
-import '../services/task_weight_learner.dart';
 
 /// Outcome of a manual task submission.
 /// `conflict`    = the chosen time slot overlaps an existing task.
@@ -55,25 +54,19 @@ class AddTaskViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 🟢 核心统一：全系统最高指挥官级别的关键字 NLP 测算分值字典
+  // 🟢 关键词分类算分（与报告一致）
   void updateTaskName(String name) {
     _taskName = name;
-    
-    // 如果是手动评分模式，不再自动更新分数
+
+    // 手动评分模式下不再自动改分
     if (_ratingType.contains('Manual')) {
       notifyListeners();
       return;
     }
 
-    // 🧠 Personalised score: uses the weights learned from this user's own
-    // manual NASA-TLX ratings, falling back to the shared keyword model.
-    _cognitiveLoadScore = TaskWeightLearner.instance.scoreFor(name);
+    _cognitiveLoadScore = IntensityClassifier.scoreFromTitle(name);
     notifyListeners();
   }
-
-  /// Why the current score was given (explainable AI, shown under the score).
-  String get scoreExplanation =>
-      TaskWeightLearner.instance.explain(_taskName);
 
   void setDate(DateTime date) { _selectedDate = date; notifyListeners(); }
   void setStartTime(TimeOfDay time) { _startTime = time; notifyListeners(); }
@@ -82,10 +75,6 @@ class AddTaskViewModel extends ChangeNotifier {
   void setManualScore(int score) {
     _cognitiveLoadScore = score;
     _ratingType = 'Manual (NASA-TLX)';
-    // 🧠 Every manual rating is a labelled training example: this title was
-    // really worth this load. Teach the personal model so future tasks with
-    // the same words are scored the way THIS user experiences them.
-    TaskWeightLearner.instance.learn(_taskName, score);
     notifyListeners();
   }
 

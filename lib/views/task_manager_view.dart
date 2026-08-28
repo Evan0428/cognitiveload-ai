@@ -292,12 +292,8 @@ class _TaskManagerViewState extends State<TaskManagerView> {
                       child: Text('${addTaskVM.ratingType}: ${addTaskVM.cognitiveLoadScore}', style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const SizedBox(height: 10),
-                    // 🧠 Explainable AI: says whether the score came from the
-                    // shared keyword model or from weights learned from this
-                    // user's own manual ratings.
-                    Text(addTaskVM.scoreExplanation,
-                        style: const TextStyle(
-                            fontSize: 12, height: 1.4, color: Color(0xFF64748B))),
+                    const Text('Auto-calculated based on keywords in task name',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),

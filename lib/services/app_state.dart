@@ -17,7 +17,6 @@ import 'health_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
 import 'stress_model.dart';
-import 'task_weight_learner.dart';
 
 class AppState extends ChangeNotifier {
   final OcrService ocr = OcrService();
@@ -102,17 +101,6 @@ class AppState extends ChangeNotifier {
         .toList();
   }
 
-  final Map<String, int> _keywordScores = {
-    'exam': 95,
-    'test': 85,
-    'quiz': 75,
-    'lab': 65,
-    'lecture': 45,
-    'gym': 20,
-    'workout': 20,
-    'rest': 10,
-  };
-
   Future<void> init() async {
     _loading = true;
     notifyListeners();
@@ -125,7 +113,6 @@ class AppState extends ChangeNotifier {
     });
 
     await _load();
-    await TaskWeightLearner.instance.load(); // personalised task weights
     await StressModel.instance.load(); // TFLite stress model (no-op if absent)
     await syncTasksFromFirestore();
     _listenToUserProfile(FirebaseAuth.instance.currentUser?.uid);
@@ -428,15 +415,19 @@ class AppState extends ChangeNotifier {
         baseline: baseline, stressProbability: stress);
     final r = _result!;
 
-    // Focus Lock suppresses non-critical (high) alerts — only a dangerously
-    // high overload breaks through, so deep-focus flow isn't interrupted.
+    // The load alert must respect the user's THRESHOLD — not merely the fixed
+    // "High" band. Only engage once the load actually reaches the (personalised)
+    // threshold and the alert toggle is on; Focus Lock further restricts this to
+    // a dangerous overload.
+    final bool alertsEnabled = _userProfile?.loadThresholdAlert ?? true;
+    final bool overThreshold =
+        alertsEnabled && r.combinedLoad >= _threshold.value;
     final notifiable = _focusLock
-        ? r.level == LoadLevel.overload
-        : (r.level == LoadLevel.overload || r.level == LoadLevel.high);
+        ? (overThreshold && r.level == LoadLevel.overload)
+        : overThreshold;
 
     if (notifiable) {
-      // Throttle: notify only when the level escalates, or after a 30-minute
-      // cooldown — otherwise every task edit / periodic refresh would buzz.
+      // Throttle: escalate only when the level rises, or after a 30-min cooldown.
       final escalated = _lastNotifiedLevel == null ||
           r.level.index > _lastNotifiedLevel!.index;
       final cooledDown = _lastNotifiedAt == null ||
@@ -445,11 +436,9 @@ class AppState extends ChangeNotifier {
       if (escalated || cooledDown) {
         _lastNotifiedLevel = r.level;
         _lastNotifiedAt = DateTime.now();
-        notifier.show(
-          'CognitiveLoad AI - ${r.level.label}',
-          r.alerts.isNotEmpty ? r.alerts.first : 'Review your workload.',
-        );
-        // Ask for the training signal at the moment the alert fires, once.
+        // The push notification itself is sent by _checkAndNotifyLoadThreat()
+        // below (also threshold-gated), so we don't fire a second one here.
+        // Capture the training signal for the adaptive threshold, once.
         _awaitingThresholdFeedback = true;
         _feedbackLevel = r.level;
       }
@@ -694,14 +683,6 @@ class AppState extends ChangeNotifier {
       cognitiveLoadScore: task.cognitiveLoadScore,
       ratingType: task.ratingType,
     );
-  }
-
-  int _getScoreByKeyword(String title) {
-    final lowerTitle = title.toLowerCase();
-    for (final entry in _keywordScores.entries) {
-      if (lowerTitle.contains(entry.key)) return entry.value;
-    }
-    return 50;
   }
 
   TaskIntensity _getIntensityByScore(int score) {
