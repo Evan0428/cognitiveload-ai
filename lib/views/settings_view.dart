@@ -11,6 +11,13 @@ import '../services/task_service.dart';
 import '../widgets/avatar_view.dart';
 import 'rpm_creator_view.dart';
 
+/// Whether the seeded-fortnight control appears in Settings.
+///
+/// Kept as an explicit constant rather than kDebugMode: the demonstration data
+/// is needed most in a release build, because an iOS debug build will not
+/// launch standalone from the home screen. Set to false to hide it.
+const bool kShowTestDataCard = true;
+
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
 
@@ -554,10 +561,17 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               const SizedBox(height: 16),
 
-              // Debug builds only. Personalisation depends on 14 days of
-              // history that cannot be produced on demand, so a fixed
-              // synthetic fortnight can be loaded for testing and rehearsal.
-              if (kDebugMode) ...[
+              // Personalisation depends on 14 days of history that cannot be
+              // produced on demand, so a fixed synthetic fortnight can be
+              // loaded for testing and rehearsal.
+              //
+              // This was originally gated on kDebugMode, but that made it
+              // unreachable exactly when it is needed: an iOS debug build
+              // cannot be launched from the home screen without the debugger
+              // attached, so a standalone demonstration has to be a release
+              // build — which is precisely where the gate hid the control.
+              // The card states plainly that the data is synthetic.
+              if (kShowTestDataCard) ...[
                 _buildCardContainer(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
