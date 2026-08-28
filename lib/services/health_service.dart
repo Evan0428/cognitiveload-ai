@@ -19,11 +19,30 @@ class HealthService {
   final Health _health = Health();
   bool _configured = false;
 
+  /// Sleep as Apple Watch actually records it.
+  ///
+  /// HealthKit stores sleep as `HKCategoryValueSleepAnalysis`, and the plugin
+  /// exposes each raw value as its own type: SLEEP_ASLEEP is value 1
+  /// (`asleepUnspecified`), while SLEEP_LIGHT / SLEEP_DEEP / SLEEP_REM are
+  /// values 3 / 4 / 5 (`asleepCore` / `asleepDeep` / `asleepREM`).
+  ///
+  /// An Apple Watch writes only the staged values. Querying SLEEP_ASLEEP alone
+  /// therefore returns nothing at all and sleep reads as zero — which is
+  /// exactly what happened on device. The stages are summed instead, and
+  /// SLEEP_ASLEEP is retained as a fallback for sources that still write the
+  /// unspecified value, such as manual entries and some third-party apps.
+  static const List<HealthDataType> _sleepStages = [
+    HealthDataType.SLEEP_LIGHT, // asleepCore
+    HealthDataType.SLEEP_DEEP,
+    HealthDataType.SLEEP_REM,
+  ];
+
   /// The biometric signals the readiness model depends on.
   static const List<HealthDataType> _types = [
     HealthDataType.HEART_RATE,
     HealthDataType.HEART_RATE_VARIABILITY_SDNN,
     HealthDataType.SLEEP_ASLEEP,
+    ..._sleepStages,
     HealthDataType.STEPS,
   ];
 
@@ -68,6 +87,7 @@ class HealthService {
           HealthDataType.HEART_RATE,
           HealthDataType.HEART_RATE_VARIABILITY_SDNN,
           HealthDataType.SLEEP_ASLEEP,
+          ..._sleepStages,
         ],
       );
 
@@ -77,12 +97,15 @@ class HealthService {
       final hrv = _latestNumeric(
               points, HealthDataType.HEART_RATE_VARIABILITY_SDNN) ??
           50;
-      // Total minutes asleep over the lookback window -> hours.
-      final sleepMinutes = points
-          .where((p) => p.type == HealthDataType.SLEEP_ASLEEP)
-          .fold<double>(
-              0, (sum, p) => sum + p.dateTo.difference(p.dateFrom).inMinutes);
-      final sleepHours = sleepMinutes / 60.0;
+
+      // Sleep: sum the staged values the Watch writes, falling back to the
+      // unspecified value for other sources. See [_sleepStages].
+      final stageMinutes = _sleepStages.fold<double>(
+          0, (sum, type) => sum + _minutesOf(points, type));
+      final unspecifiedMinutes =
+          _minutesOf(points, HealthDataType.SLEEP_ASLEEP);
+      final sleepHours =
+          totalSleepHours(stageMinutes, unspecifiedMinutes);
 
       // Steps since midnight (dedicated aggregate API).
       final steps =
@@ -92,7 +115,7 @@ class HealthService {
         timestamp: now,
         heartRate: heartRate,
         hrv: hrv,
-        sleepHours: sleepHours > 0 ? sleepHours : 0,
+        sleepHours: sleepHours,
         steps: steps,
       );
     } catch (e) {
@@ -100,6 +123,24 @@ class HealthService {
       return _simulatedSnapshot();
     }
   }
+
+  /// Combine staged and unspecified sleep into a single duration in hours.
+  ///
+  /// The two are not added together. A device reports one or the other: an
+  /// Apple Watch writes stages, other sources write the unspecified value, and
+  /// summing both would double-count a night that happened to be recorded
+  /// twice. Staged data is preferred because it is the more precise record.
+  @visibleForTesting
+  static double totalSleepHours(
+      double stageMinutes, double unspecifiedMinutes) {
+    final minutes = stageMinutes > 0 ? stageMinutes : unspecifiedMinutes;
+    return minutes > 0 ? minutes / 60.0 : 0;
+  }
+
+  /// Total minutes covered by all points of [type].
+  double _minutesOf(List<HealthDataPoint> points, HealthDataType type) =>
+      points.where((p) => p.type == type).fold<double>(
+          0, (sum, p) => sum + p.dateTo.difference(p.dateFrom).inMinutes);
 
   /// Most-recent numeric value for [type] from a list of HealthKit points.
   double? _latestNumeric(List<HealthDataPoint> points, HealthDataType type) {
