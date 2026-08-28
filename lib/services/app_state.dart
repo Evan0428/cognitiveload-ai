@@ -296,11 +296,46 @@ class AppState extends ChangeNotifier {
       await _save();
     }
 
-    // Persists the snapshot, rewrites the rolling history and mirrors the day
-    // to Firestore, exactly as a real sync would.
+    // Persists the snapshot and rewrites the local rolling history.
     await _saveSnapshot();
+
+    // _saveSnapshot only mirrors *today* to Firestore, because a real sync
+    // produces one day at a time. The seeded fortnight would therefore live
+    // only in the local cache, and a reinstall between seeding and presenting
+    // would collapse the trend chart to a single point and drop the baseline
+    // back below the reliability threshold. Write every seeded day, so
+    // syncPhysiologyFromFirestore can restore the whole fortnight.
+    await _persistHistoryToCloud();
+
     _recompute();
     notifyListeners();
+  }
+
+  /// Mirror the entire rolling history to Firestore, one document per day.
+  Future<void> _persistHistoryToCloud() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final collection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('physiology');
+      final batch = FirebaseFirestore.instance.batch();
+      for (final s in _history) {
+        batch.set(
+          collection.doc(_dayKey(s.timestamp)),
+          {
+            ...s.toJson(),
+            'readiness': engine.computeReadiness(s, baseline: baseline),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('History cloud mirror failed (kept local): $e');
+    }
   }
 
   /// Withdraw everything [seedDemoData] wrote, locally and in the cloud.
