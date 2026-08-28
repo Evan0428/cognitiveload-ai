@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,12 +10,15 @@ import '../services/task_service.dart';
 import '../widgets/avatar_view.dart';
 import 'rpm_creator_view.dart';
 
-/// Whether the seeded-fortnight control appears in Settings.
+/// How many long-presses on the version line reveal the demonstration-data
+/// controls.
 ///
-/// Kept as an explicit constant rather than kDebugMode: the demonstration data
-/// is needed most in a release build, because an iOS debug build will not
-/// launch standalone from the home screen. Set to false to hide it.
-const bool kShowTestDataCard = true;
+/// The seeded fortnight exists so personalisation can be rehearsed without
+/// waiting two weeks for real history to accumulate, but it must not look like
+/// a feature of the product. A visible "load test data" control invites the
+/// reasonable question of whether anything else on screen is real, so it is
+/// reached only by a deliberate gesture that nobody finds by accident.
+const int kDemoUnlockPresses = 3;
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -561,65 +563,6 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               const SizedBox(height: 16),
 
-              // Personalisation depends on 14 days of history that cannot be
-              // produced on demand, so a fixed synthetic fortnight can be
-              // loaded for testing and rehearsal.
-              //
-              // This was originally gated on kDebugMode, but that made it
-              // unreachable exactly when it is needed: an iOS debug build
-              // cannot be launched from the home screen without the debugger
-              // attached, so a standalone demonstration has to be a release
-              // build — which is precisely where the gate hid the control.
-              // The card states plainly that the data is synthetic.
-              if (kShowTestDataCard) ...[
-                _buildCardContainer(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.science_outlined, size: 18, color: Color(0xFFB45309)),
-                          SizedBox(width: 8),
-                          Text('Test Data (debug build only)',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Loads a fixed 14-day physiological history and a full day of tasks so '
-                        'the baseline, trend chart and alerts can be exercised immediately. '
-                        'This is synthetic data — never present it as a real recording.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.35),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: _seeding
-                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.download_rounded, size: 18),
-                              label: Text(_seeding ? 'Loading...' : 'Load 14 Days'),
-                              onPressed: _seeding ? null : () => _runSeed(load: true),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
-                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                              label: const Text('Clear'),
-                              onPressed: _seeding ? null : () => _runSeed(load: false),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
               _buildCardContainer(
                 child: SizedBox(
                   width: double.infinity,
@@ -635,7 +578,21 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Center(child: Text('CognitiveLoadAI v1.0.0 • Cognitive Load Management System', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))),
+              Center(
+                child: GestureDetector(
+                  // Hidden entry point for the seeded fortnight — see
+                  // kDemoUnlockPresses. Deliberately unlabelled.
+                  behavior: HitTestBehavior.opaque,
+                  onLongPress: _registerDemoUnlockPress,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                    child: Text(
+                      'CognitiveLoadAI v1.0.0 • Cognitive Load Management System',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -645,6 +602,85 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   bool _seeding = false;
+  int _demoUnlockPresses = 0;
+
+  /// Count long-presses on the version line; open the demonstration-data
+  /// sheet once enough have landed. Silent until the last one, so an
+  /// accidental press reveals nothing.
+  void _registerDemoUnlockPress() {
+    _demoUnlockPresses++;
+    if (_demoUnlockPresses < kDemoUnlockPresses) return;
+    _demoUnlockPresses = 0;
+    _openDemoDataSheet();
+  }
+
+  void _openDemoDataSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.science_outlined, size: 18, color: Color(0xFFB45309)),
+                  SizedBox(width: 8),
+                  Text('Demonstration data',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Loads a fixed 14-day physiological history and a full day of '
+                'tasks, so the baseline, trend chart and alerts can be shown '
+                'without waiting two weeks. This is synthetic data — never '
+                'present it as a real recording.',
+                style: TextStyle(
+                    fontSize: 12.5, color: Color(0xFF64748B), height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('Load 14 Days'),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _runSeed(load: true);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                      label: const Text('Clear'),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _runSeed(load: false);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   /// Load or withdraw the synthetic fortnight (debug builds only).
   Future<void> _runSeed({required bool load}) async {
